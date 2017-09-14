@@ -71,8 +71,21 @@ public class Performer {
 		return _imageName;
 	}
 	
+	public Genre getGenre(){
+		return _genre;
+	}
+	
 	public Set<Concert> getConcerts() {
 		return Collections.unmodifiableSet(_concerts);
+	}
+	
+	
+	public Set<Long> getConcertIds(){
+		Set<Long> concertIds = new HashSet<Long>();
+		for(Concert c : _concerts){
+			concertIds.add(c.getId());
+		}
+		return concertIds;
 	}
 	
 	@Override

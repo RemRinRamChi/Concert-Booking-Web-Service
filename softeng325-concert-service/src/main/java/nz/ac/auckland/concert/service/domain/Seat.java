@@ -1,13 +1,17 @@
 package nz.ac.auckland.concert.service.domain;
 
 
-import nz.ac.auckland.concert.common.types.SeatNumber;
-import nz.ac.auckland.concert.common.types.SeatRow;
-
+import javax.persistence.Convert;
 import javax.persistence.Embeddable;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
+
+import nz.ac.auckland.concert.common.types.SeatNumber;
+import nz.ac.auckland.concert.common.types.SeatRow;
+import nz.ac.auckland.concert.service.domain.jpa.SeatNumberConverter;
 
 /**
  * Class to represent seats at the concert venue. 
@@ -19,8 +23,10 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
  */
 @Embeddable
 public class Seat {
-
+	@Enumerated(EnumType.STRING)
 	private SeatRow _row;
+	
+	@Convert(converter = SeatNumberConverter.class)
 	private SeatNumber _number;
 	
 	public Seat() {}

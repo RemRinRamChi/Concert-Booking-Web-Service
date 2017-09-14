@@ -13,6 +13,7 @@ import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
@@ -43,9 +44,11 @@ public class Booking {
 	private Long _id;
 	
 	@ManyToOne
+	@JoinColumn(name = "CONCERT_ID", nullable = false)
 	private Concert _concert;
 
 	@ManyToOne
+	@JoinColumn(name = "USER_ID", nullable = false)
 	private User _user;
 	
 	@Convert(converter = LocalDateTimeConverter.class)
@@ -93,6 +96,18 @@ public class Booking {
 
 	public User getUser() {
 		return _user;
+	}
+	
+	public String getUsername(){
+		return _user.getUsername();
+	}
+	
+	public Long getConcertId(){
+		return _concert.getId();
+	}
+	
+	public String getConcertTitle(){
+		return _concert.getTitle();
 	}
 	
 	@Override

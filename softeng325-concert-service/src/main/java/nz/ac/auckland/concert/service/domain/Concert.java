@@ -104,6 +104,18 @@ public class Concert {
 		return Collections.unmodifiableSet(_performers);
 	}
 	
+	public Map<PriceBand, BigDecimal> getTariff(){
+		return _tariff;
+	}
+	
+	public Set<Long> getPerformerIds(){
+		Set<Long> performerIds = new HashSet<Long>();
+		for(Performer p : _performers){
+			performerIds.add(p.getId());
+		}
+		return performerIds;
+	}
+	
 	@Override
 	public boolean equals(Object obj) {
 		if (!(obj instanceof Concert))
