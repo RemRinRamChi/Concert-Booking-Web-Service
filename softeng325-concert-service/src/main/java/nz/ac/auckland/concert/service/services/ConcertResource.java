@@ -1,6 +1,5 @@
 package nz.ac.auckland.concert.service.services;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,10 +7,9 @@ import javax.persistence.EntityManager;
 import javax.persistence.TypedQuery;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
+import javax.ws.rs.CookieParam;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -26,11 +24,13 @@ import org.slf4j.LoggerFactory;
 
 import nz.ac.auckland.concert.common.dto.BookingDTO;
 import nz.ac.auckland.concert.common.dto.ConcertDTO;
+import nz.ac.auckland.concert.common.dto.CreditCardDTO;
 import nz.ac.auckland.concert.common.dto.PerformerDTO;
 import nz.ac.auckland.concert.common.dto.UserDTO;
 import nz.ac.auckland.concert.common.message.Messages;
 import nz.ac.auckland.concert.service.domain.Booking;
 import nz.ac.auckland.concert.service.domain.Concert;
+import nz.ac.auckland.concert.service.domain.CreditCard;
 import nz.ac.auckland.concert.service.domain.Performer;
 import nz.ac.auckland.concert.service.domain.User;
 
@@ -41,7 +41,10 @@ import nz.ac.auckland.concert.service.domain.User;
 
 @Path("/concerts")
 public class ConcertResource {
-
+	/**
+	 * Name of a cookie exchanged by clients and the Web service.
+	 */
+	public static final String CLIENT_COOKIE = "clientId";
 
 	private static Logger _logger = LoggerFactory
 			.getLogger(ConcertResource.class);
@@ -112,14 +115,14 @@ public class ConcertResource {
 	}
 
 	/**
-	 * Retrieves all Bookings of a user
+	 * Retrieves a Performer's image
 	 * 
-	 * @return a Response object containing all the user's Bookings.
+	 * @return a Response object containing a Performar's image.
 	 */
 	@GET
-	@Path("/bookings/{id}")
+	@Path("/performers/{id}/image")
 	@Produces(javax.ws.rs.core.MediaType.APPLICATION_XML)
-	public Response retrieveBookings(@PathParam("id") String id) {
+	public Response retrievePerformerImage() {
 		ResponseBuilder builder = null;
 
 		// Acquire an EntityManager (creating a new persistence context).
@@ -127,31 +130,30 @@ public class ConcertResource {
 		// Start a new transaction.
 		em.getTransaction().begin();
 
-		// Use the EntityManager to retrieve all Bookings for the user.
-		TypedQuery<Booking> bookingQuery = em.createQuery("select b from Booking b", Booking.class);
-		List<Booking> bookings = bookingQuery.getResultList();
+		// Use the EntityManager to retrieve all Performers.
+		TypedQuery<Performer> performerQuery = em.createQuery("select p from Performer p", Performer.class);
+		List<Performer> performers = performerQuery.getResultList();
 
-		List<BookingDTO> bookingDTOs = new ArrayList<BookingDTO>();
+		List<PerformerDTO> performerDTOs = new ArrayList<PerformerDTO>();
 		
-		for(Booking b : bookings){
-			if(b.getUsername().equals(id)){
-				bookingDTOs.add(DTOMapper.bookingToDTO(b));
-			}
+		for(Performer p : performers){
+			performerDTOs.add(DTOMapper.performerToDTO(p));
 		}
 		
-		GenericEntity<List<BookingDTO>> entity = new GenericEntity<List<BookingDTO>>(bookingDTOs){};
+		GenericEntity<List<PerformerDTO>> entity = new GenericEntity<List<PerformerDTO>>(performerDTOs){};
 		
 		builder = Response.ok(entity);
 
 		return builder.build();
 	}
-	
+
 	/**
 	 * Creates a new User.
 	 */
 	@POST
-	@Path("/users/signup")
+	@Path("/signup")
 	@Consumes(javax.ws.rs.core.MediaType.APPLICATION_XML)
+	@Produces(javax.ws.rs.core.MediaType.APPLICATION_XML)
 	public Response createUser(UserDTO userDTO) {
 		ResponseBuilder builder = null;
 
@@ -182,7 +184,7 @@ public class ConcertResource {
 		// return the UserDTO
 		builder = Response.ok(DTOMapper.userToDTO(user));
 		// with token
-		builder.cookie(makeCookie(user.getUsername(), user.getPassword()));
+		builder.cookie(makeCookie(user.getUsername()));
 
 		return builder.build();
 	}
@@ -191,8 +193,9 @@ public class ConcertResource {
 	 * Authenticates a User
 	 */
 	@POST
-	@Path("/users/signin")
+	@Path("/login")
 	@Consumes(javax.ws.rs.core.MediaType.APPLICATION_XML)
+	@Produces(javax.ws.rs.core.MediaType.APPLICATION_XML)
 	public Response authenticateUser(UserDTO userDTO) {
 		ResponseBuilder builder = null;
 
@@ -214,7 +217,7 @@ public class ConcertResource {
 			throw new BadRequestException(builder.build());	
 		} else if (user.getPassword().equals(userDTO.getPassword())){
 			builder = Response.ok(DTOMapper.userToDTO(user));
-			builder.cookie(makeCookie(user.getUsername(), user.getPassword()));
+			builder.cookie(makeCookie(user.getUsername()));
 		} else {
 			builder = Response.status(Status.BAD_REQUEST).entity(Messages.AUTHENTICATE_USER_WITH_ILLEGAL_PASSWORD);
 			throw new BadRequestException(builder.build());	
@@ -224,147 +227,107 @@ public class ConcertResource {
 	}
 	
 	/**
-	 * Creates a new Concert. This method assigns an ID to the new Concert and
-	 * stores it in memory. The HTTP Response message returns a Location header
-	 * with the URI of the new Concert and a status code of 201.
-	 * 
-	 * This method maps to the URI pattern <base-uri>/concerts.
-	 * 
-	 * @param concert
-	 *            the new Concert to create.
-	 * 
-	 * @return a Response object containing the status code 201 and a Location
-	 *         header.
+	 * Registers a credit card with the user
 	 */
 	@POST
+	@Path("/creditcards")
 	@Consumes(javax.ws.rs.core.MediaType.APPLICATION_XML)
-	public Response createConcert(Concert concert) {
+	public Response registerCreditCard(CreditCardDTO creditCardDTO, @CookieParam(CLIENT_COOKIE) String token) {
 		ResponseBuilder builder = null;
 
-		// Acquire an EntityManager (creating a new persistence context).
-		EntityManager em = PersistenceManager.instance().createEntityManager();
-		// Start a new transaction.
-		em.getTransaction().begin();
-		// Use the EntityManager to persist object.
-		em.persist(concert);
-		long id = concert.getId();
-		// Commit the transaction.
-		em.getTransaction().commit();
-
-		builder = Response.created(URI.create("/concerts/" + id));
-
-		return builder.build();
-	}
-
-	/**
-	 * Updates an existing Concert. The HTTP Response message returns a status
-	 * code of 204 or 404.
-	 * 
-	 * This method maps to the URI pattern <base-uri>/concerts.
-	 * 
-	 * @param concert
-	 *            the new Concert to create.
-	 * 
-	 * @return a Response object containing the status code 201 and a Location
-	 *         header.
-	 */
-	@PUT
-	@Consumes(javax.ws.rs.core.MediaType.APPLICATION_XML)
-	public Response updateConcert(Concert concert) {
-		ResponseBuilder builder = null;
-
-		// Acquire an EntityManager (creating a new persistence context).
-		EntityManager em = PersistenceManager.instance().createEntityManager();
-		// Start a new transaction.
-		em.getTransaction().begin();
-		// Use the EntityManager to update Concert.
-		if (em.find(Concert.class, concert.getId()) != null) {
-			em.merge(concert);
-			builder = Response.status(Response.Status.NO_CONTENT);
-		} else {
-			builder = Response.status(Response.Status.NOT_FOUND);
+		if(token == null){
+			handleUnauthenticatedRequest();
 		}
-		// Commit the transaction.
-		em.getTransaction().commit();
-
-		return builder.build();
-	}
-
-	/**
-	 * Deletes a single Concert, returning a status code of 204 if the Concert
-	 * exists and 404 if it doesn't
-	 * 
-	 * This method maps to the URI pattern <base-uri>/concerts/{id}.
-	 * 
-	 * @return a Response object containing the status code 204 or 404.
-	 */
-	@DELETE
-	@Path("{id}")
-	public Response deleteConcert(@PathParam("id") long id) {
-		ResponseBuilder builder = null;
-
+		
 		// Acquire an EntityManager (creating a new persistence context).
 		EntityManager em = PersistenceManager.instance().createEntityManager();
 		// Start a new transaction.
 		em.getTransaction().begin();
-		// Use the EntityManager to delete object.
-		Concert concert = em.find(Concert.class, id);
-		if (concert != null) { // found
-			em.remove(concert);
-			builder = Response.status(Response.Status.NO_CONTENT);
-		} else { // not found
-			builder = Response.status(Response.Status.NOT_FOUND);
+		
+		User user = em.find(User.class, token);
+		
+		// token doesn't identify a user
+		if(user == null){
+			handleUnrecognisedToken();
 		}
+		
+		// token identifies a user, so proceed to adding credit card information to user 
+		CreditCard creditCard = DTOMapper.creditCardToDomainModel(creditCardDTO);
+		user.addCreditCard(creditCard);
+		
 		// Commit the transaction.
 		em.getTransaction().commit();
-
-		return builder.build();
-	}
-
-	/**
-	 * Deletes all Concerts, returning a status code of 204.
-	 * 
-	 * When clientId is null, the HTTP request message doesn't contain a cookie
-	 * named clientId (Config.CLIENT_COOKIE), this method generates a new
-	 * cookie, whose value is a randomly generated UUID. This method returns the
-	 * new cookie as part of the HTTP response message.
-	 * 
-	 * This method maps to the URI pattern <base-uri>/concerts.
-	 * 
-	 * @param clientId
-	 *            a cookie named Config.CLIENT_COOKIE that may be sent by the
-	 *            client.
-	 * 
-	 * @return a Response object containing the status code 204.
-	 */
-	@DELETE
-	public Response deleteAllConcerts() {
-		ResponseBuilder builder = null;
-
-		// Acquire an EntityManager (creating a new persistence context).
-		EntityManager em = PersistenceManager.instance().createEntityManager();
-		// Start a new transaction.
-		em.getTransaction().begin();
-		// Use the EntityManager to retrieve all Concerts, then delete them all.
-		TypedQuery<Concert> concertQuery = em.createQuery("select c from Concert c", Concert.class);
-		List<Concert> concerts = concertQuery.getResultList();
-		for (Concert c : concerts) {
-			em.remove(c);
-
-		}
-		// Commit the transaction.
-		em.getTransaction().commit();
-
-		builder = Response.status(Response.Status.NO_CONTENT);
-
+		
+		builder = Response.status(Status.NO_CONTENT);
+		
 		return builder.build();
 	}
 	
 	
-	private NewCookie makeCookie(String username, String password){
+	/**
+	 * Retrieves all Bookings of a user
+	 * 
+	 * @return a Response object containing all the user's Bookings.
+	 */
+	@GET
+	@Path("/bookings")
+	@Produces(javax.ws.rs.core.MediaType.APPLICATION_XML)
+	public Response retrieveBookings(@CookieParam(CLIENT_COOKIE) String token) {
+		ResponseBuilder builder = null;
+
+		if(token == null){
+			handleUnauthenticatedRequest();
+		}
+		
+		// Acquire an EntityManager (creating a new persistence context).
+		EntityManager em = PersistenceManager.instance().createEntityManager();
+		// Start a new transaction.
+		em.getTransaction().begin();
+		
+		User user = em.find(User.class, token);
+		
+		// token doesn't identify a user
+		if(user == null){
+			handleUnrecognisedToken();
+		}
+		
+		// Use the EntityManager to retrieve all Bookings.
+		TypedQuery<Booking> bookingQuery = em.createQuery("select b from Booking b", Booking.class);
+		List<Booking> bookings = bookingQuery.getResultList();
+
+		// Only returns bookings associated with the authenticated user
+		List<BookingDTO> bookingDTOs = new ArrayList<BookingDTO>();
+		for(Booking b : bookings){
+			if(b.getUsername().equals(user.getUsername())){
+				bookingDTOs.add(DTOMapper.bookingToDTO(b));
+			}
+		}
+		
+		GenericEntity<List<BookingDTO>> entity = new GenericEntity<List<BookingDTO>>(bookingDTOs){};
+		
+		builder = Response.ok(entity);
+
+		return builder.build();
+	}
+	
+	private void handleUnauthenticatedRequest(){
+		throw new BadRequestException(Response.status(Status.UNAUTHORIZED).entity(Messages.UNAUTHENTICATED_REQUEST).build());
+	}
+	
+	private void handleUnrecognisedToken(){
+		throw new BadRequestException(Response.status(Status.UNAUTHORIZED).entity(Messages.BAD_AUTHENTICATON_TOKEN).build());	
+	}
+	
+	/**
+	 * Make a new token (cookie) using the user's username and password
+	 * @param username
+	 * @param password
+	 * @return token
+	 */
+	private NewCookie makeCookie(String username){
 		NewCookie newCookie = null;
 	
-		newCookie = new NewCookie(username, password);
+		newCookie = new NewCookie(CLIENT_COOKIE, username);
 		_logger.info("Generated cookie: " + newCookie.getValue());
 		
 		return newCookie;

@@ -5,11 +5,13 @@ import java.util.Set;
 
 import nz.ac.auckland.concert.common.dto.BookingDTO;
 import nz.ac.auckland.concert.common.dto.ConcertDTO;
+import nz.ac.auckland.concert.common.dto.CreditCardDTO;
 import nz.ac.auckland.concert.common.dto.PerformerDTO;
 import nz.ac.auckland.concert.common.dto.SeatDTO;
 import nz.ac.auckland.concert.common.dto.UserDTO;
 import nz.ac.auckland.concert.service.domain.Booking;
 import nz.ac.auckland.concert.service.domain.Concert;
+import nz.ac.auckland.concert.service.domain.CreditCard;
 import nz.ac.auckland.concert.service.domain.Performer;
 import nz.ac.auckland.concert.service.domain.Seat;
 import nz.ac.auckland.concert.service.domain.User;
@@ -38,6 +40,10 @@ public class DTOMapper {
 	static User userToDomainModel(UserDTO user){
 		return new User(user.getUsername(), user.getPassword(), user.getLastname(), user.getFirstname());
 	}
+	
+	static CreditCard creditCardToDomainModel(CreditCardDTO creditCard){
+		return new CreditCard(creditCard.getType(), creditCard.getName(), creditCard.getNumber(), creditCard.getExpiryDate());
+	}	
 	
 	static BookingDTO bookingToDTO(Booking booking){
 		return new BookingDTO(booking.getConcertId(), booking.getConcertTitle(), booking.getDateTime(), 

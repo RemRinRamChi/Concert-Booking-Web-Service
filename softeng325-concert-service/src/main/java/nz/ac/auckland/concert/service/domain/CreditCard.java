@@ -11,6 +11,7 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import nz.ac.auckland.concert.service.domain.jpa.LocalDateTimeConverter;
+import nz.ac.auckland.concert.common.dto.CreditCardDTO.Type;
 
 /**
  * Class to represent credit cards. 
@@ -24,8 +25,6 @@ import nz.ac.auckland.concert.service.domain.jpa.LocalDateTimeConverter;
  */
 @Embeddable
 public class CreditCard {
-	
-	public enum Type {Visa, Master};
     
 	@Enumerated(EnumType.STRING)
 	private Type _type;
