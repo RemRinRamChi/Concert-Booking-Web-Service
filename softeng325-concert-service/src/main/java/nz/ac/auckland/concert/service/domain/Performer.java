@@ -54,6 +54,11 @@ public class Performer {
 		_concerts = new HashSet<Concert>(concerts);
 	}
 	
+	
+	public Performer(String name, String imageName, Genre genre, Set<Concert> concerts) {
+		this(null, name, imageName, genre, concerts);
+	}
+	
 	public Long getId() {
 		return _id;
 	}

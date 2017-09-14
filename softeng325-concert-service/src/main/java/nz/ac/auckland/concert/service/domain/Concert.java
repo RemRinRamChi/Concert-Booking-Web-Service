@@ -79,6 +79,11 @@ public class Concert {
 		_performers = new HashSet<Performer>(performers);
 	}
 
+	public Concert(String title, Set<LocalDateTime> dates,
+			Map<PriceBand, BigDecimal> ticketPrices, Set<Performer> performers) {
+		this(null, title, dates, ticketPrices, performers);
+	}
+	
 	public Long getId() {
 		return _id;
 	}
