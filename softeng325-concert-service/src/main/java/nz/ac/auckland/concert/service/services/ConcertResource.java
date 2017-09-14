@@ -6,6 +6,7 @@ import java.util.List;
 
 import javax.persistence.EntityManager;
 import javax.persistence.TypedQuery;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -15,15 +16,23 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.GenericEntity;
+import javax.ws.rs.core.NewCookie;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
+import javax.ws.rs.core.Response.Status;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import nz.ac.auckland.concert.common.dto.BookingDTO;
 import nz.ac.auckland.concert.common.dto.ConcertDTO;
 import nz.ac.auckland.concert.common.dto.PerformerDTO;
+import nz.ac.auckland.concert.common.dto.UserDTO;
+import nz.ac.auckland.concert.common.message.Messages;
 import nz.ac.auckland.concert.service.domain.Booking;
 import nz.ac.auckland.concert.service.domain.Concert;
 import nz.ac.auckland.concert.service.domain.Performer;
+import nz.ac.auckland.concert.service.domain.User;
 
 /**
  * Class to implement a simple REST Web service for managing Concerts.
@@ -33,6 +42,10 @@ import nz.ac.auckland.concert.service.domain.Performer;
 @Path("/concerts")
 public class ConcertResource {
 
+
+	private static Logger _logger = LoggerFactory
+			.getLogger(ConcertResource.class);
+	
 	/**
 	 * Retrieves all Concerts
 	 * 
@@ -134,35 +147,78 @@ public class ConcertResource {
 	}
 	
 	/**
-	 * Creates a new Concert. This method assigns an ID to the new Concert and
-	 * stores it in memory. The HTTP Response message returns a Location header
-	 * with the URI of the new Concert and a status code of 201.
-	 * 
-	 * This method maps to the URI pattern <base-uri>/concerts.
-	 * 
-	 * @param concert
-	 *            the new Concert to create.
-	 * 
-	 * @return a Response object containing the status code 201 and a Location
-	 *         header.
+	 * Creates a new User.
 	 */
 	@POST
-	@Path("/users")
+	@Path("/users/signup")
 	@Consumes(javax.ws.rs.core.MediaType.APPLICATION_XML)
-	public Response createUser(Concert concert) {
+	public Response createUser(UserDTO userDTO) {
 		ResponseBuilder builder = null;
 
+		// fields missing
+		if(userDTO.getFirstname() == null || userDTO.getLastname() == null || userDTO.getUsername() == null || userDTO.getPassword() == null ){
+			builder = Response.status(Status.BAD_REQUEST).entity(Messages.CREATE_USER_WITH_MISSING_FIELDS);
+			throw new BadRequestException(builder.build());
+		}
+		
 		// Acquire an EntityManager (creating a new persistence context).
 		EntityManager em = PersistenceManager.instance().createEntityManager();
 		// Start a new transaction.
 		em.getTransaction().begin();
+		
+		// user name taken
+		if(em.find(User.class, userDTO.getUsername()) != null){ //TODO dk if bad request
+			builder = Response.status(Status.BAD_REQUEST).entity(Messages.CREATE_USER_WITH_NON_UNIQUE_NAME);
+			throw new BadRequestException(builder.build());			
+		}
+		
+		// convert to domain object
+		User user = DTOMapper.userToDomainModel(userDTO);
 		// Use the EntityManager to persist object.
-		em.persist(concert);
-		long id = concert.getId();
+		em.persist(user);
 		// Commit the transaction.
 		em.getTransaction().commit();
 
-		builder = Response.created(URI.create("/concerts/" + id));
+		// return the UserDTO
+		builder = Response.ok(DTOMapper.userToDTO(user));
+		// with token
+		builder.cookie(makeCookie(user.getUsername(), user.getPassword()));
+
+		return builder.build();
+	}
+	
+	/**
+	 * Authenticates a User
+	 */
+	@POST
+	@Path("/users/signin")
+	@Consumes(javax.ws.rs.core.MediaType.APPLICATION_XML)
+	public Response authenticateUser(UserDTO userDTO) {
+		ResponseBuilder builder = null;
+
+		// fields missing
+		if(userDTO.getFirstname() == null || userDTO.getLastname() == null || userDTO.getUsername() == null || userDTO.getPassword() == null ){
+			builder = Response.status(Status.BAD_REQUEST).entity(Messages.AUTHENTICATE_USER_WITH_MISSING_FIELDS);
+			throw new BadRequestException(builder.build());
+		}
+		
+		// Acquire an EntityManager (creating a new persistence context).
+		EntityManager em = PersistenceManager.instance().createEntityManager();
+		// Start a new transaction.
+		em.getTransaction().begin();
+		
+		User user = em.find(User.class, userDTO.getUsername());
+		
+		if(user == null){
+			builder = Response.status(Status.NOT_FOUND).entity(Messages.AUTHENTICATE_NON_EXISTENT_USER);
+			throw new BadRequestException(builder.build());	
+		} else if (user.getPassword().equals(userDTO.getPassword())){
+			builder = Response.ok(DTOMapper.userToDTO(user));
+			builder.cookie(makeCookie(user.getUsername(), user.getPassword()));
+		} else {
+			builder = Response.status(Status.BAD_REQUEST).entity(Messages.AUTHENTICATE_USER_WITH_ILLEGAL_PASSWORD);
+			throw new BadRequestException(builder.build());	
+		}
 
 		return builder.build();
 	}
@@ -303,4 +359,15 @@ public class ConcertResource {
 
 		return builder.build();
 	}
+	
+	
+	private NewCookie makeCookie(String username, String password){
+		NewCookie newCookie = null;
+	
+		newCookie = new NewCookie(username, password);
+		_logger.info("Generated cookie: " + newCookie.getValue());
+		
+		return newCookie;
+	}
+	
 }

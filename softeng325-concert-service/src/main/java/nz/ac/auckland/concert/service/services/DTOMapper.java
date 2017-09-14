@@ -7,10 +7,12 @@ import nz.ac.auckland.concert.common.dto.BookingDTO;
 import nz.ac.auckland.concert.common.dto.ConcertDTO;
 import nz.ac.auckland.concert.common.dto.PerformerDTO;
 import nz.ac.auckland.concert.common.dto.SeatDTO;
+import nz.ac.auckland.concert.common.dto.UserDTO;
 import nz.ac.auckland.concert.service.domain.Booking;
 import nz.ac.auckland.concert.service.domain.Concert;
 import nz.ac.auckland.concert.service.domain.Performer;
 import nz.ac.auckland.concert.service.domain.Seat;
+import nz.ac.auckland.concert.service.domain.User;
 
 /**
  * Helper class to convert between domain-model and DTO objects.
@@ -27,6 +29,14 @@ public class DTOMapper {
 		return new PerformerDTO(performer.getId(), performer.getName(), 
 				performer.getImageName(),performer.getGenre(), performer.getConcertIds());
 
+	}
+	
+	static UserDTO userToDTO(User user){
+		return new UserDTO(user.getUsername(), user.getPassword(), user.getLastname(), user.getFirstname());
+	}
+	
+	static User userToDomainModel(UserDTO user){
+		return new User(user.getUsername(), user.getPassword(), user.getLastname(), user.getFirstname());
 	}
 	
 	static BookingDTO bookingToDTO(Booking booking){
