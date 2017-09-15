@@ -35,11 +35,7 @@ public class User {
 	@ElementCollection
 	@CollectionTable(name = "USER_CREDITCARDS")
 	private Set<CreditCard> _creditCards;
-	/*
-	@ElementCollection
-	@CollectionTable(name = "USER_BOOKINGS")
-	private Set<Booking> _bookings;
-	*/
+
 	protected User() {}
 	
 	public User(String username, String password, String lastname, String firstname) {
@@ -48,7 +44,6 @@ public class User {
 		_lastname = lastname;
 		_firstname = firstname;
 		_creditCards = new HashSet<CreditCard>();
-		//_bookings = new HashSet<Booking>();
 	}
 	
 	public User(String username, String password) {
@@ -78,15 +73,8 @@ public class User {
 	public Set<CreditCard> getCreditCards() {
 		return Collections.unmodifiableSet(_creditCards);
 	}
-/*
-	public void addBooking(Booking booking){
-		_bookings.add(booking);
-	}
-	
-	public Set<Booking> getBookings() {
-		return Collections.unmodifiableSet(_bookings);
-	}
-*/	
+
+
 	@Override
 	public boolean equals(Object obj) {
 		if (!(obj instanceof User))

@@ -61,7 +61,8 @@ public class Booking {
     @Enumerated(EnumType.STRING)
 	private PriceBand _priceBand;
 
-
+    private boolean _confirmed;
+    
 	public Booking() {
 	}
 
@@ -76,8 +77,22 @@ public class Booking {
 		_priceBand = priceBand;
 		
 		_user = user;
+		
+		_confirmed = false;
 	}
 
+	public Long getId(){
+		return _id;
+	}
+	
+	public void setConfirmed(){
+		_confirmed = true;
+	}	
+	
+	public boolean getConfirmationStatus(){
+		return _confirmed;
+	}	
+	
 	public Concert getConcert() {
 		return _concert;
 	}
