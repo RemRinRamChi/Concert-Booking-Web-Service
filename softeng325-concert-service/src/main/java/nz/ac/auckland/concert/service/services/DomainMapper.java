@@ -8,6 +8,7 @@ import java.util.Set;
 import nz.ac.auckland.concert.common.dto.BookingDTO;
 import nz.ac.auckland.concert.common.dto.ConcertDTO;
 import nz.ac.auckland.concert.common.dto.CreditCardDTO;
+import nz.ac.auckland.concert.common.dto.NewsItemDTO;
 import nz.ac.auckland.concert.common.dto.PerformerDTO;
 import nz.ac.auckland.concert.common.dto.ReservationDTO;
 import nz.ac.auckland.concert.common.dto.ReservationRequestDTO;
@@ -17,6 +18,7 @@ import nz.ac.auckland.concert.common.types.SeatNumber;
 import nz.ac.auckland.concert.service.domain.Booking;
 import nz.ac.auckland.concert.service.domain.Concert;
 import nz.ac.auckland.concert.service.domain.CreditCard;
+import nz.ac.auckland.concert.service.domain.NewsItem;
 import nz.ac.auckland.concert.service.domain.Performer;
 import nz.ac.auckland.concert.service.domain.Seat;
 import nz.ac.auckland.concert.service.domain.User;
@@ -25,7 +27,7 @@ import nz.ac.auckland.concert.service.domain.User;
  * Helper class to convert between domain-model and DTO objects.
  *
  */
-public class DTOMapper {
+public class DomainMapper {
 	static ConcertDTO concertToDTO(Concert concert){
 		return new ConcertDTO(concert.getId(), concert.getTitle(), 
 				concert.getDates(), concert.getTariff(), concert.getPerformerIds());
@@ -81,8 +83,17 @@ public class DTOMapper {
 		return seats;
 	}	
 	 
-	static Timestamp convertToDatabaseColumn(LocalDateTime locDateTime) {
-    	return (locDateTime == null ? null : Timestamp.valueOf(locDateTime));
+	static NewsItemDTO newsItemToDTO(NewsItem newsItem){
+		return new NewsItemDTO(newsItem.getId(), newsItem.getTimetamp(), newsItem.getContent());
+	}
+	
+	static NewsItem newsItemToDomainModel(NewsItemDTO newsItem){
+		return new NewsItem(newsItem.getId(), newsItem.getTimetamp(), newsItem.getContent());
+	}
+	
+	// Helper methods to compare values against database
+	static Timestamp convertToDatabaseColumn(LocalDateTime localDateTime) {
+    	return (localDateTime == null ? null : Timestamp.valueOf(localDateTime));
     }
 	
 	static Integer convertToDatabaseColumn(SeatNumber seatNumber) {

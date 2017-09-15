@@ -15,6 +15,8 @@ import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.container.AsyncResponse;
+import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.GenericEntity;
 import javax.ws.rs.core.NewCookie;
 import javax.ws.rs.core.Response;
@@ -27,15 +29,18 @@ import org.slf4j.LoggerFactory;
 import nz.ac.auckland.concert.common.dto.BookingDTO;
 import nz.ac.auckland.concert.common.dto.ConcertDTO;
 import nz.ac.auckland.concert.common.dto.CreditCardDTO;
+import nz.ac.auckland.concert.common.dto.NewsItemDTO;
 import nz.ac.auckland.concert.common.dto.PerformerDTO;
 import nz.ac.auckland.concert.common.dto.ReservationDTO;
 import nz.ac.auckland.concert.common.dto.ReservationRequestDTO;
 import nz.ac.auckland.concert.common.dto.SeatDTO;
 import nz.ac.auckland.concert.common.dto.UserDTO;
 import nz.ac.auckland.concert.common.message.Messages;
+import nz.ac.auckland.concert.common.util.Config;
 import nz.ac.auckland.concert.service.domain.Booking;
 import nz.ac.auckland.concert.service.domain.Concert;
 import nz.ac.auckland.concert.service.domain.CreditCard;
+import nz.ac.auckland.concert.service.domain.NewsItem;
 import nz.ac.auckland.concert.service.domain.Performer;
 import nz.ac.auckland.concert.service.domain.User;
 import nz.ac.auckland.concert.service.util.TheatreUtility;
@@ -47,13 +52,12 @@ import nz.ac.auckland.concert.service.util.TheatreUtility;
 
 @Path("/concerts")
 public class ConcertResource {
-	/**
-	 * Name of a cookie exchanged by clients and the Web service.
-	 */
-	public static final String CLIENT_COOKIE = "clientId";
 
 	private static Logger _logger = LoggerFactory
 			.getLogger(ConcertResource.class);
+	
+	private AsyncResponse response = null;
+	private String mostRecentClientNews = null;
 	
 	/**
 	 * Retrieves all Concerts
@@ -77,7 +81,7 @@ public class ConcertResource {
 		List<ConcertDTO> concertDTOs = new ArrayList<ConcertDTO>();
 		
 		for(Concert c : concerts){
-			concertDTOs.add(DTOMapper.concertToDTO(c));
+			concertDTOs.add(DomainMapper.concertToDTO(c));
 		}
 		
 		GenericEntity<List<ConcertDTO>> entity = new GenericEntity<List<ConcertDTO>>(concertDTOs){};
@@ -110,7 +114,7 @@ public class ConcertResource {
 		List<PerformerDTO> performerDTOs = new ArrayList<PerformerDTO>();
 		
 		for(Performer p : performers){
-			performerDTOs.add(DTOMapper.performerToDTO(p));
+			performerDTOs.add(DomainMapper.performerToDTO(p));
 		}
 		
 		GenericEntity<List<PerformerDTO>> entity = new GenericEntity<List<PerformerDTO>>(performerDTOs){};
@@ -148,14 +152,14 @@ public class ConcertResource {
 		}
 		
 		// convert to domain object
-		User user = DTOMapper.userToDomainModel(userDTO);
+		User user = DomainMapper.userToDomainModel(userDTO);
 		// Use the EntityManager to persist object.
 		em.persist(user);
 		// Commit the transaction.
 		em.getTransaction().commit();
 
 		// return the UserDTO
-		builder = Response.ok(DTOMapper.userToDTO(user));
+		builder = Response.ok(DomainMapper.userToDTO(user));
 		// with token
 		builder.cookie(makeCookie(user.getUsername()));
 
@@ -189,7 +193,7 @@ public class ConcertResource {
 			builder = Response.status(Status.NOT_FOUND).entity(Messages.AUTHENTICATE_NON_EXISTENT_USER);
 			throw new BadRequestException(builder.build());	
 		} else if (user.getPassword().equals(userDTO.getPassword())){
-			builder = Response.ok(DTOMapper.userToDTO(user));
+			builder = Response.ok(DomainMapper.userToDTO(user));
 			builder.cookie(makeCookie(user.getUsername()));
 		} else {
 			builder = Response.status(Status.BAD_REQUEST).entity(Messages.AUTHENTICATE_USER_WITH_ILLEGAL_PASSWORD);
@@ -205,7 +209,7 @@ public class ConcertResource {
 	@POST
 	@Path("/creditcards")
 	@Consumes(javax.ws.rs.core.MediaType.APPLICATION_XML)
-	public Response registerCreditCard(CreditCardDTO creditCardDTO, @CookieParam(CLIENT_COOKIE) String token) {
+	public Response registerCreditCard(CreditCardDTO creditCardDTO, @CookieParam(Config.CLIENT_COOKIE) String token) {
 		ResponseBuilder builder = null;
 
 		handlePossibleUnauthenticatedRequest(token);
@@ -220,7 +224,7 @@ public class ConcertResource {
 		handlePossibleUnrecognisedToken(user);
 		
 		// token identifies a user, so proceed to adding credit card information to user 
-		CreditCard creditCard = DTOMapper.creditCardToDomainModel(creditCardDTO);
+		CreditCard creditCard = DomainMapper.creditCardToDomainModel(creditCardDTO);
 		user.addCreditCard(creditCard);
 		
 		// Commit the transaction.
@@ -240,7 +244,7 @@ public class ConcertResource {
 	@GET
 	@Path("/bookings")
 	@Produces(javax.ws.rs.core.MediaType.APPLICATION_XML)
-	public Response retrieveBookings(@CookieParam(CLIENT_COOKIE) String token) {
+	public Response retrieveBookings(@CookieParam(Config.CLIENT_COOKIE) String token) {
 		ResponseBuilder builder = null;
 
 		handlePossibleUnauthenticatedRequest(token);
@@ -263,7 +267,7 @@ public class ConcertResource {
 		// Convert to DTOs
 		List<BookingDTO> bookingDTOs = new ArrayList<BookingDTO>();
 		for(Booking b : bookings){
-			bookingDTOs.add(DTOMapper.bookingToDTO(b));
+			bookingDTOs.add(DomainMapper.bookingToDTO(b));
 		}
 		
 		GenericEntity<List<BookingDTO>> entity = new GenericEntity<List<BookingDTO>>(bookingDTOs){};
@@ -280,7 +284,7 @@ public class ConcertResource {
 	@POST
 	@Path("/reservations")
 	@Consumes(javax.ws.rs.core.MediaType.APPLICATION_XML)
-	public Response reserveSeats(ReservationRequestDTO reservationRequestDTO, @CookieParam(CLIENT_COOKIE) String token) {
+	public Response reserveSeats(ReservationRequestDTO reservationRequestDTO, @CookieParam(Config.CLIENT_COOKIE) String token) {
 		ResponseBuilder builder = null;
 
 		handlePossibleUnauthenticatedRequest(token);
@@ -314,7 +318,7 @@ public class ConcertResource {
 				.setLockMode(LockModeType.PESSIMISTIC_WRITE)
 				.setHint("javax.persistence.lock.timeout", 5000)
 				.setParameter("concert_id", reservationRequestDTO.getConcertId())
-				.setParameter("date", DTOMapper.convertToDatabaseColumn(reservationRequestDTO.getDate()))
+				.setParameter("date", DomainMapper.convertToDatabaseColumn(reservationRequestDTO.getDate()))
 				.setParameter("seat_type", reservationRequestDTO.getSeatType().toString());
 		//TODO ^ check check
 		
@@ -323,7 +327,7 @@ public class ConcertResource {
 		// get all booked seats
 		Set<SeatDTO> bookedSeats = new HashSet<SeatDTO>();
 		for(Booking b : bookings){
-			bookedSeats.addAll(DTOMapper.seatsToDTO(b.getSeats()));
+			bookedSeats.addAll(DomainMapper.seatsToDTO(b.getSeats()));
 		}
 		
 		// get seats to reserve
@@ -335,7 +339,7 @@ public class ConcertResource {
 		
 		if(reservationSeatDTOS.size() != 0){
 			unconfirmedBooking = new Booking(em.find(Concert.class, reservationRequestDTO.getConcertId()),
-					reservationRequestDTO.getDate(), DTOMapper.seatsToDomainModel(reservationSeatDTOS), 
+					reservationRequestDTO.getDate(), DomainMapper.seatsToDomainModel(reservationSeatDTOS), 
 					reservationRequestDTO.getSeatType(), user);
 			
 			em.persist(unconfirmedBooking);
@@ -383,7 +387,7 @@ public class ConcertResource {
 	@POST
 	@Path("/reservations/confirmation")
 	@Consumes(javax.ws.rs.core.MediaType.APPLICATION_XML)
-	public Response confirmReservation(ReservationDTO reservationDTO, @CookieParam(CLIENT_COOKIE) String token) {
+	public Response confirmReservation(ReservationDTO reservationDTO, @CookieParam(Config.CLIENT_COOKIE) String token) {
 		ResponseBuilder builder = null;
 
 		handlePossibleUnauthenticatedRequest(token);
@@ -418,6 +422,56 @@ public class ConcertResource {
 		return builder.build();
 	}
 	
+	/**
+	 * Subscribe for news item
+	 * @param token
+	 */
+	@GET
+	@Path("/news")
+	public void subscribe(@Suspended AsyncResponse clientResponse, @CookieParam(Config.RECENT_NEWS) String news){
+		mostRecentClientNews = news;
+		response = clientResponse;
+		// TODO how to wait in background?
+	}
+	
+	@POST
+	@Path("/news")
+	@Consumes(javax.ws.rs.core.MediaType.APPLICATION_XML)
+	public void sendNewsItem(NewsItemDTO newsItemDTO){
+		// Acquire an EntityManager (creating a new persistence context).
+		EntityManager em = PersistenceManager.instance().createEntityManager();
+		// Start a new transaction.
+		em.getTransaction().begin();
+		
+		em.persist(DomainMapper.newsItemToDomainModel(newsItemDTO));
+		
+		em.getTransaction().commit();
+
+		em.getTransaction().begin();
+
+		TypedQuery<NewsItem> newsItemQuery = 
+				em.createQuery("select n from NewsItem n", NewsItem.class);
+		List<NewsItem> newsItems = newsItemQuery.getResultList();
+
+		if(response == null){
+			// do nothing since nobody subscribed
+		} else if(mostRecentClientNews == null){
+			List<NewsItemDTO> newNewsItems = new ArrayList<>();
+			newNewsItems.add(newsItemDTO);
+			GenericEntity<List<NewsItemDTO>> entity = new GenericEntity<List<NewsItemDTO>>(newNewsItems){};
+			response.resume(entity);
+		} else {
+			List<NewsItemDTO> newNewsItems = new ArrayList<>();
+			for(NewsItem n : newsItems){
+				if(n.getId() > Long.parseLong(mostRecentClientNews)){
+					newNewsItems.add(DomainMapper.newsItemToDTO(n));
+				}
+			}
+			GenericEntity<List<NewsItemDTO>> entity = new GenericEntity<List<NewsItemDTO>>(newNewsItems){};
+			response.resume(entity);
+		}
+		
+	}
 	
 	private void handlePossibleUnauthenticatedRequest(String token){
 		if(token == null){
@@ -440,7 +494,7 @@ public class ConcertResource {
 	private NewCookie makeCookie(String username){
 		NewCookie newCookie = null;
 	
-		newCookie = new NewCookie(CLIENT_COOKIE, username);
+		newCookie = new NewCookie(Config.CLIENT_COOKIE, username);
 		_logger.info("Generated cookie: " + newCookie.getValue());
 		
 		return newCookie;
