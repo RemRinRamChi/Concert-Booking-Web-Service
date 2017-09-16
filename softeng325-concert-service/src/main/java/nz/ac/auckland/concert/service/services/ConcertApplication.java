@@ -3,6 +3,7 @@ package nz.ac.auckland.concert.service.services;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.persistence.EntityManager;
 import javax.ws.rs.ApplicationPath;
 import javax.ws.rs.core.Application;
 
@@ -32,6 +33,28 @@ public class ConcertApplication extends Application {
 	public ConcertApplication() {
 		_singletons.add(PersistenceManager.instance());
 		_classes.add(ConcertResource.class);
+		
+		// clear the effects of previous tests running
+		EntityManager em = null;
+		try {
+			em = PersistenceManager.instance().createEntityManager();
+			em.getTransaction().begin();
+		
+			// Delete all existing entities of some type, e.g. MyEntity.
+			em.createQuery("delete from Booking").executeUpdate();
+			em.createQuery("delete from Concert").executeUpdate();
+			em.createQuery("delete from NewsItem").executeUpdate();
+			em.createQuery("delete from Performer").executeUpdate();
+			em.createQuery("delete from User").executeUpdate();
+			
+			em.getTransaction().commit();
+		
+		} finally {
+			if(em != null && em.isOpen()){
+				em.close();
+			}
+		}
+
 	}
 
 	@Override
