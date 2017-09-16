@@ -56,7 +56,13 @@ public class ConcertResource {
 	private static Logger _logger = LoggerFactory
 			.getLogger(ConcertResource.class);
 	
+	/**
+	 * The subscribed client's response for news item
+	 */
 	private AsyncResponse response = null;
+	/**
+	 * The client's most recent news item
+	 */
 	private String mostRecentClientNews = null;
 	
 	/**
@@ -77,15 +83,9 @@ public class ConcertResource {
 		// Use the EntityManager to retrieve all Concerts.
 		TypedQuery<Concert> concertQuery = em.createQuery("select c from Concert c", Concert.class);
 		List<Concert> concerts = concertQuery.getResultList();
-
-		List<ConcertDTO> concertDTOs = new ArrayList<ConcertDTO>();
 		
-		for(Concert c : concerts){
-			concertDTOs.add(DomainMapper.concertToDTO(c));
-		}
-		
-		GenericEntity<List<ConcertDTO>> entity = new GenericEntity<List<ConcertDTO>>(concertDTOs){};
-		
+		// Return all the concerts
+		GenericEntity<Set<ConcertDTO>> entity = new GenericEntity<Set<ConcertDTO>>(DomainMapper.concertsToDTO(concerts)){};
 		builder = Response.ok(entity);
 
 		return builder.build();
@@ -111,21 +111,17 @@ public class ConcertResource {
 		TypedQuery<Performer> performerQuery = em.createQuery("select p from Performer p", Performer.class);
 		List<Performer> performers = performerQuery.getResultList();
 
-		List<PerformerDTO> performerDTOs = new ArrayList<PerformerDTO>();
-		
-		for(Performer p : performers){
-			performerDTOs.add(DomainMapper.performerToDTO(p));
-		}
-		
-		GenericEntity<List<PerformerDTO>> entity = new GenericEntity<List<PerformerDTO>>(performerDTOs){};
-		
+		// Return all the performers
+		GenericEntity<Set<PerformerDTO>> entity = new GenericEntity<Set<PerformerDTO>>(DomainMapper.performersToDTO(performers)){};
 		builder = Response.ok(entity);
 
 		return builder.build();
 	}
 
 	/**
-	 * Creates a new User.
+	 * Creates a new User
+	 * 
+	 * @return a Response object containing the created User and an authentication token
 	 */
 	@POST
 	@Path("/signup")
@@ -133,12 +129,6 @@ public class ConcertResource {
 	@Produces(javax.ws.rs.core.MediaType.APPLICATION_XML)
 	public Response createUser(UserDTO userDTO) {
 		ResponseBuilder builder = null;
-
-		// fields missing //TODO can be done in client
-		if(userDTO.getFirstname() == null || userDTO.getLastname() == null || userDTO.getUsername() == null || userDTO.getPassword() == null ){
-			builder = Response.status(Status.BAD_REQUEST).entity(Messages.CREATE_USER_WITH_MISSING_FIELDS);
-			throw new BadRequestException(builder.build());
-		}
 		
 		// Acquire an EntityManager (creating a new persistence context).
 		EntityManager em = PersistenceManager.instance().createEntityManager();
@@ -151,16 +141,16 @@ public class ConcertResource {
 			throw new BadRequestException(builder.build());			
 		}
 		
-		// convert to domain object
+		// persist the created user into the database
 		User user = DomainMapper.userToDomainModel(userDTO);
-		// Use the EntityManager to persist object.
 		em.persist(user);
+		
 		// Commit the transaction.
 		em.getTransaction().commit();
 
 		// return the UserDTO
 		builder = Response.ok(DomainMapper.userToDTO(user));
-		// with token
+		// with an authentication token
 		builder.cookie(makeCookie(user.getUsername()));
 
 		return builder.build();
@@ -168,6 +158,8 @@ public class ConcertResource {
 	
 	/**
 	 * Authenticates a User
+	 * 
+	 * @return a Response object containing the authentication token
 	 */
 	@POST
 	@Path("/login")
@@ -175,12 +167,6 @@ public class ConcertResource {
 	@Produces(javax.ws.rs.core.MediaType.APPLICATION_XML)
 	public Response authenticateUser(UserDTO userDTO) {
 		ResponseBuilder builder = null;
-
-		// fields missing //TODO can be done in client
-		if(userDTO.getFirstname() == null || userDTO.getLastname() == null || userDTO.getUsername() == null || userDTO.getPassword() == null ){
-			builder = Response.status(Status.BAD_REQUEST).entity(Messages.AUTHENTICATE_USER_WITH_MISSING_FIELDS);
-			throw new BadRequestException(builder.build());
-		}
 		
 		// Acquire an EntityManager (creating a new persistence context).
 		EntityManager em = PersistenceManager.instance().createEntityManager();
@@ -189,12 +175,16 @@ public class ConcertResource {
 		
 		User user = em.find(User.class, userDTO.getUsername());
 		
+		// user not found using authentication token
 		if(user == null){
-			builder = Response.status(Status.NOT_FOUND).entity(Messages.AUTHENTICATE_NON_EXISTENT_USER);
-			throw new BadRequestException(builder.build());	
+			builder = Response.status(Status.BAD_REQUEST).entity(Messages.AUTHENTICATE_NON_EXISTENT_USER);
+			throw new BadRequestException(builder.build());
+		// CORRECT password, return authentication token
 		} else if (user.getPassword().equals(userDTO.getPassword())){
+			// convert and return the user from domain which has all properties set
 			builder = Response.ok(DomainMapper.userToDTO(user));
 			builder.cookie(makeCookie(user.getUsername()));
+		// wrong password
 		} else {
 			builder = Response.status(Status.BAD_REQUEST).entity(Messages.AUTHENTICATE_USER_WITH_ILLEGAL_PASSWORD);
 			throw new BadRequestException(builder.build());	
@@ -211,8 +201,6 @@ public class ConcertResource {
 	@Consumes(javax.ws.rs.core.MediaType.APPLICATION_XML)
 	public Response registerCreditCard(CreditCardDTO creditCardDTO, @CookieParam(Config.CLIENT_COOKIE) String token) {
 		ResponseBuilder builder = null;
-
-		handlePossibleUnauthenticatedRequest(token);
 		
 		// Acquire an EntityManager (creating a new persistence context).
 		EntityManager em = PersistenceManager.instance().createEntityManager();
@@ -246,8 +234,6 @@ public class ConcertResource {
 	@Produces(javax.ws.rs.core.MediaType.APPLICATION_XML)
 	public Response retrieveBookings(@CookieParam(Config.CLIENT_COOKIE) String token) {
 		ResponseBuilder builder = null;
-
-		handlePossibleUnauthenticatedRequest(token);
 		
 		// Acquire an EntityManager (creating a new persistence context).
 		EntityManager em = PersistenceManager.instance().createEntityManager();
@@ -264,13 +250,8 @@ public class ConcertResource {
 				.setParameter("username", user.getUsername());
 		List<Booking> bookings = bookingQuery.getResultList();
 		
-		// Convert to DTOs
-		List<BookingDTO> bookingDTOs = new ArrayList<BookingDTO>();
-		for(Booking b : bookings){
-			bookingDTOs.add(DomainMapper.bookingToDTO(b));
-		}
-		
-		GenericEntity<List<BookingDTO>> entity = new GenericEntity<List<BookingDTO>>(bookingDTOs){};
+		// Return the list of bookings
+		GenericEntity<Set<BookingDTO>> entity = new GenericEntity<Set<BookingDTO>>(DomainMapper.bookingsToDTO(bookings)){};
 		
 		builder = Response.ok(entity);
 
@@ -279,7 +260,9 @@ public class ConcertResource {
 	
 	
 	/**
-	 * Reserves seats
+	 * Reserves seats in a concert after checking for availability
+	 * 	 
+	 * @return a Response object containing the reservation
 	 */
 	@POST
 	@Path("/reservations")
@@ -287,8 +270,6 @@ public class ConcertResource {
 	public Response reserveSeats(ReservationRequestDTO reservationRequestDTO, @CookieParam(Config.CLIENT_COOKIE) String token) {
 		ResponseBuilder builder = null;
 
-		handlePossibleUnauthenticatedRequest(token);
-		
 		// Acquire an EntityManager (creating a new persistence context).
 		EntityManager em = PersistenceManager.instance().createEntityManager();
 		// Start a new transaction.
@@ -298,9 +279,10 @@ public class ConcertResource {
 		
 		handlePossibleUnrecognisedToken(user);
 		
+		// Get the Concert
 		Concert concert = em.find(Concert.class, reservationRequestDTO.getConcertId());
 
-		// if concert not on that date
+		// if concert not on that date or concert doesn't exist
 		if((concert == null) || (! concert.getDates().contains(reservationRequestDTO.getDate()))){
 			builder = Response.status(Status.BAD_REQUEST).entity(Messages.CONCERT_NOT_SCHEDULED_ON_RESERVATION_DATE);
 			throw new BadRequestException(builder.build());
@@ -318,9 +300,8 @@ public class ConcertResource {
 				.setLockMode(LockModeType.PESSIMISTIC_WRITE)
 				.setHint("javax.persistence.lock.timeout", 5000)
 				.setParameter("concert_id", reservationRequestDTO.getConcertId())
-				.setParameter("date", DomainMapper.convertToDatabaseColumn(reservationRequestDTO.getDate()))
+				.setParameter("date", DomainMapper.convertToDatabaseColumn(reservationRequestDTO.getDate())) //TODO maybe wrong conversion
 				.setParameter("seat_type", reservationRequestDTO.getSeatType().toString());
-		//TODO ^ check check
 		
 		List<Booking> bookings = bookingQuery.getResultList();		
 		
@@ -330,54 +311,69 @@ public class ConcertResource {
 			bookedSeats.addAll(DomainMapper.seatsToDTO(b.getSeats()));
 		}
 		
-		// get seats to reserve
+		// randomly select seats for reservation
 		Set<SeatDTO> reservationSeatDTOS = 
 				TheatreUtility.findAvailableSeats(reservationRequestDTO.getNumberOfSeats(), 
 						reservationRequestDTO.getSeatType(), bookedSeats);
 		
-		final Booking unconfirmedBooking;
+		// Stores the unconfirmed Booking
+		Booking unconfirmedBooking;
 		
+		// if seats are returned, searching for seats has been successful
 		if(reservationSeatDTOS.size() != 0){
-			unconfirmedBooking = new Booking(em.find(Concert.class, reservationRequestDTO.getConcertId()),
+			unconfirmedBooking = new Booking(concert,
 					reservationRequestDTO.getDate(), DomainMapper.seatsToDomainModel(reservationSeatDTOS), 
 					reservationRequestDTO.getSeatType(), user);
 			
+			// persist the unconfirmed Booking
 			em.persist(unconfirmedBooking);
 			
 			// Commit the transaction and get rid of locks
 			em.getTransaction().commit();
 		} else {
+			// Commit the transaction and get rid of locks
 			em.getTransaction().commit();
+			// insufficient seats
 			builder = Response.status(Status.BAD_REQUEST).entity(Messages.INSUFFICIENT_SEATS_AVAILABLE_FOR_RESERVATION);
 			throw new BadRequestException(builder.build());
 		}
 		
+		// prepare to return reservation
 		builder = Response.ok(new ReservationDTO(unconfirmedBooking.getId(), reservationRequestDTO, reservationSeatDTOS));
+		
+		// close entity manager
 		em.close();
 		
-		// Remove the booking if still unconfirmed at expiry time
+		// TODO consider flushing and clearing?
+		
+		// Run a separate thread to remove the booking if still unconfirmed at expiry time
 		new Thread(){
 			public void run(){
+				// wait till expiry time
 				try {
 					Thread.sleep(ConcertApplication.RESERVATION_EXPIRY_TIME_IN_SECONDS*1000);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
+				
 				// Acquire an EntityManager (creating a new persistence context).
 				EntityManager em = PersistenceManager.instance().createEntityManager();
 				// Start a new transaction.
 				em.getTransaction().begin();				
 				
 				Booking bookingToConfirm = em.find(Booking.class, unconfirmedBooking.getId(), LockModeType.PESSIMISTIC_WRITE);
+				// remove booking if still unconfirmed
 				if(bookingToConfirm.getConfirmationStatus() == false){
 					em.remove(bookingToConfirm);
 				}
+				
 				// Commit the transaction and get rid of locks
 				em.getTransaction().commit();
 				em.close();
 			}
 		}.start();
 		
+		// return the reservation after starting the separate thread
 		return builder.build();
 	}
 	
@@ -389,8 +385,6 @@ public class ConcertResource {
 	@Consumes(javax.ws.rs.core.MediaType.APPLICATION_XML)
 	public Response confirmReservation(ReservationDTO reservationDTO, @CookieParam(Config.CLIENT_COOKIE) String token) {
 		ResponseBuilder builder = null;
-
-		handlePossibleUnauthenticatedRequest(token);
 		
 		// Acquire an EntityManager (creating a new persistence context).
 		EntityManager em = PersistenceManager.instance().createEntityManager();
@@ -401,6 +395,7 @@ public class ConcertResource {
 		
 		handlePossibleUnrecognisedToken(user);
 				
+		// TODO hmm should this be done before checking whether expired?
 		if(user.getCreditCards().size() == 0){
 			builder = Response.status(Status.BAD_REQUEST).entity(Messages.CREDIT_CARD_NOT_REGISTERED);
 			throw new BadRequestException(builder.build());
@@ -408,6 +403,7 @@ public class ConcertResource {
 		
 		Booking bookingToConfirm = em.find(Booking.class, reservationDTO.getId(), LockModeType.PESSIMISTIC_WRITE);
 		
+		// if booking associated with the user cannot be found, that means the booking has expired
 		if(bookingToConfirm == null || !bookingToConfirm.getUser().equals(user)){
 			em.getTransaction().commit();
 			builder = Response.status(Status.BAD_REQUEST).entity(Messages.EXPIRED_RESERVATION);
@@ -429,8 +425,10 @@ public class ConcertResource {
 	@GET
 	@Path("/news")
 	public void subscribe(@Suspended AsyncResponse clientResponse, @CookieParam(Config.RECENT_NEWS) String news){
+		// store the most recent news for black out problem prevention
 		mostRecentClientNews = news;
 		response = clientResponse;
+		
 		// TODO how to wait in background?
 	}
 	
@@ -442,43 +440,50 @@ public class ConcertResource {
 		EntityManager em = PersistenceManager.instance().createEntityManager();
 		// Start a new transaction.
 		em.getTransaction().begin();
-		
+		// store the news item to database
 		em.persist(DomainMapper.newsItemToDomainModel(newsItemDTO));
 		
 		em.getTransaction().commit();
 
 		em.getTransaction().begin();
 
+		// get all the news items in the database
 		TypedQuery<NewsItem> newsItemQuery = 
 				em.createQuery("select n from NewsItem n", NewsItem.class);
 		List<NewsItem> newsItems = newsItemQuery.getResultList();
 
 		if(response == null){
 			// do nothing since nobody subscribed
+		
+		// null means client is newly subscribed so only have to return the just posted news
 		} else if(mostRecentClientNews == null){
 			List<NewsItemDTO> newNewsItems = new ArrayList<>();
+			// only the just posted news
 			newNewsItems.add(newsItemDTO);
 			GenericEntity<List<NewsItemDTO>> entity = new GenericEntity<List<NewsItemDTO>>(newNewsItems){};
+			
+			// return the news
 			response.resume(entity);
 		} else {
 			List<NewsItemDTO> newNewsItems = new ArrayList<>();
+			// return all the news after a certain news id (the subscriber's last received news item)
 			for(NewsItem n : newsItems){
 				if(n.getId() > Long.parseLong(mostRecentClientNews)){
 					newNewsItems.add(DomainMapper.newsItemToDTO(n));
 				}
 			}
 			GenericEntity<List<NewsItemDTO>> entity = new GenericEntity<List<NewsItemDTO>>(newNewsItems){};
+			
+			// return the news items
 			response.resume(entity);
 		}
 		
 	}
 	
-	private void handlePossibleUnauthenticatedRequest(String token){
-		if(token == null){
-			throw new BadRequestException(Response.status(Status.UNAUTHORIZED).entity(Messages.UNAUTHENTICATED_REQUEST).build());
-		}
-	}
-	
+	/**
+	 * Check if authentication token is recognised (associated with a user) and 
+	 * respond accordingly if not (401 Unauthorized)
+	 */
 	private void handlePossibleUnrecognisedToken(User user){
 		if(user == null){
 			throw new BadRequestException(Response.status(Status.UNAUTHORIZED).entity(Messages.BAD_AUTHENTICATON_TOKEN).build());
@@ -486,7 +491,7 @@ public class ConcertResource {
 	}
 	
 	/**
-	 * Make a new token (cookie) using the user's username and password
+	 * Make a new token (cookie) using the user's username
 	 * @param username
 	 * @param password
 	 * @return token

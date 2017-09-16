@@ -2,7 +2,9 @@ package nz.ac.auckland.concert.service.services;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import nz.ac.auckland.concert.common.dto.BookingDTO;
@@ -33,9 +35,26 @@ public class DomainMapper {
 				concert.getDates(), concert.getTariff(), concert.getPerformerIds());
 	}
 	
+	static Set<ConcertDTO> concertsToDTO(List<Concert> concerts){
+		Set<ConcertDTO> concertDTOs = new HashSet<ConcertDTO>();
+		for(Concert c : concerts){
+			concertDTOs.add(concertToDTO(c));
+		}
+		return concertDTOs;
+	}
+	
 	static PerformerDTO performerToDTO(Performer performer){
 		return new PerformerDTO(performer.getId(), performer.getName(), 
 				performer.getImageName(),performer.getGenre(), performer.getConcertIds());
+	}
+	
+	
+	static Set<PerformerDTO> performersToDTO(List<Performer> performers){
+		Set<PerformerDTO> performerDTOs = new HashSet<PerformerDTO>();
+		for(Performer p : performers){
+			performerDTOs.add(DomainMapper.performerToDTO(p));
+		}
+		return performerDTOs;
 	}
 	
 	static UserDTO userToDTO(User user){
@@ -57,6 +76,14 @@ public class DomainMapper {
 	static BookingDTO bookingToDTO(Booking booking){
 		return new BookingDTO(booking.getConcertId(), booking.getConcertTitle(), booking.getDateTime(), 
 				seatsToDTO(booking.getSeats()), booking.getPriceBand());
+	}
+	
+	static Set<BookingDTO> bookingsToDTO(List<Booking> bookings){
+		Set<BookingDTO> bookingDTOs = new HashSet<BookingDTO>();
+		for(Booking b : bookings){
+			bookingDTOs.add(DomainMapper.bookingToDTO(b));
+		}
+		return bookingDTOs;
 	}
 	
 	static SeatDTO seatToDTO(Seat seat){
