@@ -6,6 +6,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlRootElement;
+
 import java.util.Map;
 
 import nz.ac.auckland.concert.common.types.PriceBand;
@@ -27,6 +32,8 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
  *               (represented as a set of performer identifiers).
  *
  */
+@XmlRootElement
+@XmlAccessorType(XmlAccessType.FIELD)
 public class ConcertDTO {
 
 	private Long _id;
