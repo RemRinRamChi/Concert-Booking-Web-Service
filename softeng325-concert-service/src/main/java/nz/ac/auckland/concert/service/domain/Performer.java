@@ -10,6 +10,7 @@ import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.ManyToMany;
+import javax.persistence.Table;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -28,6 +29,7 @@ import nz.ac.auckland.concert.common.types.Genre;
  *             
  */
 @Entity
+@Table(name = "PERFORMERS")
 public class Performer {
 	
 	@Id

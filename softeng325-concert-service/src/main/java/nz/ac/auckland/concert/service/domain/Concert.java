@@ -20,6 +20,7 @@ import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.MapKeyColumn;
 import javax.persistence.MapKeyEnumerated;
+import javax.persistence.Table;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -41,6 +42,7 @@ import nz.ac.auckland.concert.service.domain.jpa.LocalDateTimeConverter;
  *
  */
 @Entity
+@Table(name = "CONCERTS")
 public class Concert {
 	
 	@Id

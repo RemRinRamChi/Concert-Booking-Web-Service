@@ -40,11 +40,8 @@ public class ConcertApplication extends Application {
 			em = PersistenceManager.instance().createEntityManager();
 			em.getTransaction().begin();
 		
-			// Delete all existing entities of some type, e.g. MyEntity.
 			em.createQuery("delete from Booking").executeUpdate();
-			em.createQuery("delete from Concert").executeUpdate();
 			em.createQuery("delete from NewsItem").executeUpdate();
-			em.createQuery("delete from Performer").executeUpdate();
 			em.createQuery("delete from User").executeUpdate();
 			
 			em.getTransaction().commit();
