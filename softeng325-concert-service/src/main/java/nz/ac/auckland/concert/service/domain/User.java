@@ -1,6 +1,5 @@
 package nz.ac.auckland.concert.service.domain;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -71,7 +70,7 @@ public class User {
 	}
 	
 	public Set<CreditCard> getCreditCards() {
-		return Collections.unmodifiableSet(_creditCards);
+		return _creditCards;
 	}
 
 

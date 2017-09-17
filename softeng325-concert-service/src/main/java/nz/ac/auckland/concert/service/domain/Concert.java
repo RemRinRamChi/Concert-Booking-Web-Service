@@ -2,7 +2,6 @@ package nz.ac.auckland.concert.service.domain;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -95,7 +94,7 @@ public class Concert {
 	}
 
 	public Set<LocalDateTime> getDates() {
-		return Collections.unmodifiableSet(_dates);
+		return _dates;
 	}
 
 	public BigDecimal getTicketPrice(PriceBand seatType) {
@@ -103,7 +102,7 @@ public class Concert {
 	}
 
 	public Set<Performer> getPerformers() {
-		return Collections.unmodifiableSet(_performers);
+		return _performers;
 	}
 	
 	public Map<PriceBand, BigDecimal> getTariff(){
@@ -118,6 +117,14 @@ public class Concert {
 		return performerIds;
 	}
 	
+	public void addDate(LocalDateTime date){
+		_dates.add(date);
+	}
+	
+	public void addPerformer(Performer peformer){
+		_performers.add(peformer);
+	}
+	
 	@Override
 	public boolean equals(Object obj) {
 		if (!(obj instanceof Concert))
@@ -127,20 +134,20 @@ public class Concert {
 
         Concert rhs = (Concert) obj;
         return new EqualsBuilder().
+            append(_id, rhs._id).
             append(_title, rhs._title).
             append(_dates, rhs._dates).
             append(_tariff, rhs._tariff).
-            append(_performers, rhs._performers).
             isEquals();
 	}
 	
 	@Override
 	public int hashCode() {
-		return new HashCodeBuilder(17, 31). 
+		return new HashCodeBuilder(17, 31).
+				append(_id).
 	            append(_title).
 	            append(_dates).
 	            append(_tariff).
-	            append(_performers).
 	            hashCode();
 	}
 }

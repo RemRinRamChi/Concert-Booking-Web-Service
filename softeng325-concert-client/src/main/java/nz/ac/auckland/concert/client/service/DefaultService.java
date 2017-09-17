@@ -65,7 +65,7 @@ public class DefaultService implements ConcertService {
 		// Use ClientBuilder to create a new client that can be used to create
 		// connections to the Web service.
 		_client = ClientBuilder.newClient();
-		
+		/*// TODO uncomment when submitting, this just speeds up testing
 		// Create an AmazonS3 object that represents a connection with the
 		// remote S3 service.
 		BasicAWSCredentials awsCredentials = new BasicAWSCredentials(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY);
@@ -75,7 +75,7 @@ public class DefaultService implements ConcertService {
 
 		// Find images names stored in S3.
 		imageNames = getImageNames(s3);
-		
+		*/
 		// Initially unauthenticated
 		authenticationToken = null;
 	}
@@ -224,7 +224,7 @@ public class DefaultService implements ConcertService {
 		ReservationDTO reservation = null;
 		
 		// fields missing //TODO is 0 alright for concert id?
-		if(reservationRequest.getConcertId() == 0 || reservationRequest.getDate() == null
+		if(reservationRequest.getConcertId() == null || reservationRequest.getDate() == null
 				|| reservationRequest.getNumberOfSeats() == 0 || reservationRequest.getSeatType() == null){
 			throw new ServiceException(Messages.CREATE_USER_WITH_MISSING_FIELDS);
 		}

@@ -52,6 +52,7 @@ import nz.ac.auckland.concert.service.util.TheatreUtility;
 
 @Path("/concerts")
 public class ConcertResource {
+	public static final int LOCK_TIMEOUT_MILLISECONDS = 5000;
 
 	private static Logger _logger = LoggerFactory
 			.getLogger(ConcertResource.class);
@@ -83,7 +84,7 @@ public class ConcertResource {
 		// Use the EntityManager to retrieve all Concerts.
 		TypedQuery<Concert> concertQuery = em.createQuery("select c from Concert c", Concert.class);
 		List<Concert> concerts = concertQuery.getResultList();
-		
+				
 		// Return all the concerts
 		GenericEntity<Set<ConcertDTO>> entity = new GenericEntity<Set<ConcertDTO>>(DomainMapper.concertsToDTO(concerts)){};
 		builder = Response.ok(entity);
@@ -246,7 +247,7 @@ public class ConcertResource {
 		
 		// Use the EntityManager to retrieve all Bookings with the same username.
 		TypedQuery<Booking> bookingQuery = 
-				em.createQuery("select b from Booking b where n.USER_ID = :username", Booking.class)
+				em.createQuery("select b from Booking b where b._user._username = :username", Booking.class)
 				.setParameter("username", user.getUsername());
 		List<Booking> bookings = bookingQuery.getResultList();
 		
@@ -288,20 +289,26 @@ public class ConcertResource {
 			throw new BadRequestException(builder.build());
 		}
 		
+		// TODO does it matter if I fetch first or after where
 		// Concert, date and price brand classification is used to narrow down the 
 		// number of locks to only those of the same price brand
 		// Use the EntityManager to retrieve all Bookings with the same user name.
 		TypedQuery<Booking> bookingQuery = 
 				em.createQuery("select b from Booking b "
 						+ "left join fetch b._seats "
-						+ "where n.CONCERT_ID = :concert_id and "
-						+ "n._dateTime = :date and "
-						+ "n._priceBrand = :seat_type", Booking.class)
+						+ "where "
+						+ "b._concert._id = :id "
+						+ "and "
+						+ "b._dateTime = :date "
+					    + "and "
+						+ "b._priceBand = :type"
+						, Booking.class)
 				.setLockMode(LockModeType.PESSIMISTIC_WRITE)
-				.setHint("javax.persistence.lock.timeout", 5000)
-				.setParameter("concert_id", reservationRequestDTO.getConcertId())
-				.setParameter("date", DomainMapper.convertToDatabaseColumn(reservationRequestDTO.getDate())) //TODO maybe wrong conversion
-				.setParameter("seat_type", reservationRequestDTO.getSeatType().toString());
+				.setHint("javax.persistence.lock.timeout", LOCK_TIMEOUT_MILLISECONDS)
+				.setParameter("id", reservationRequestDTO.getConcertId())
+				.setParameter("date", reservationRequestDTO.getDate())
+				.setParameter("type", reservationRequestDTO.getSeatType())
+				;
 		
 		List<Booking> bookings = bookingQuery.getResultList();		
 		
@@ -360,10 +367,10 @@ public class ConcertResource {
 				EntityManager em = PersistenceManager.instance().createEntityManager();
 				// Start a new transaction.
 				em.getTransaction().begin();				
-				
+				em.setProperty("javax.persistence.lock.timeout", LOCK_TIMEOUT_MILLISECONDS);
 				Booking bookingToConfirm = em.find(Booking.class, unconfirmedBooking.getId(), LockModeType.PESSIMISTIC_WRITE);
-				// remove booking if still unconfirmed
-				if(bookingToConfirm.getConfirmationStatus() == false){
+				// remove booking if still unconfirmed AND //TODO booking still exists
+				if(bookingToConfirm != null && bookingToConfirm.getConfirmationStatus() == false){
 					em.remove(bookingToConfirm);
 				}
 				
@@ -401,6 +408,7 @@ public class ConcertResource {
 			throw new BadRequestException(builder.build());
 		}
 		
+		em.setProperty("javax.persistence.lock.timeout", LOCK_TIMEOUT_MILLISECONDS);
 		Booking bookingToConfirm = em.find(Booking.class, reservationDTO.getId(), LockModeType.PESSIMISTIC_WRITE);
 		
 		// if booking associated with the user cannot be found, that means the booking has expired

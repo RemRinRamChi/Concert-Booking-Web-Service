@@ -33,7 +33,6 @@ public class CreditCard {
 	
 	private String _number;
 	
-	@Convert(converter = LocalDateTimeConverter.class)
 	private LocalDate _expiryDate;
 	
 	public CreditCard() {}

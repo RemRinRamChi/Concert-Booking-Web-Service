@@ -1,6 +1,5 @@
 package nz.ac.auckland.concert.service.domain;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -78,9 +77,12 @@ public class Performer {
 	}
 	
 	public Set<Concert> getConcerts() {
-		return Collections.unmodifiableSet(_concerts);
+		return _concerts;
 	}
 	
+	public void addConcert(Concert concert){
+		_concerts.add(concert);
+	}
 	
 	public Set<Long> getConcertIds(){
 		Set<Long> concertIds = new HashSet<Long>();
@@ -98,21 +100,19 @@ public class Performer {
             return true;
 
         Performer rhs = (Performer) obj;
-        return new EqualsBuilder().
+        return new EqualsBuilder().append(_id, rhs._id).
             append(_name, rhs._name).
             append(_imageName, rhs._imageName).
             append(_genre, rhs._genre).
-            append(_concerts, rhs._concerts).
             isEquals();
 	}
 	
 	@Override
 	public int hashCode() {
-		return new HashCodeBuilder(17, 31). 
+		return new HashCodeBuilder(17, 31).append(_id). 
 	            append(_name).
 	            append(_imageName).
 	            append(_genre).
-	            append(_concerts).
 	            hashCode();
 	}
 }

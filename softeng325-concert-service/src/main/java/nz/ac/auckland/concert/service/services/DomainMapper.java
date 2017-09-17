@@ -1,8 +1,5 @@
 package nz.ac.auckland.concert.service.services;
 
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -16,7 +13,6 @@ import nz.ac.auckland.concert.common.dto.ReservationDTO;
 import nz.ac.auckland.concert.common.dto.ReservationRequestDTO;
 import nz.ac.auckland.concert.common.dto.SeatDTO;
 import nz.ac.auckland.concert.common.dto.UserDTO;
-import nz.ac.auckland.concert.common.types.SeatNumber;
 import nz.ac.auckland.concert.service.domain.Booking;
 import nz.ac.auckland.concert.service.domain.Concert;
 import nz.ac.auckland.concert.service.domain.CreditCard;
@@ -31,6 +27,11 @@ import nz.ac.auckland.concert.service.domain.User;
  */
 public class DomainMapper {
 	static ConcertDTO concertToDTO(Concert concert){
+		Set<Long> performerIds = new HashSet<Long>();
+		for(Performer p : concert.getPerformers()){
+			performerIds.add(p.getId());
+		}
+		
 		return new ConcertDTO(concert.getId(), concert.getTitle(), 
 				concert.getDates(), concert.getTariff(), concert.getPerformerIds());
 	}
@@ -117,14 +118,4 @@ public class DomainMapper {
 	static NewsItem newsItemToDomainModel(NewsItemDTO newsItem){
 		return new NewsItem(newsItem.getId(), newsItem.getTimetamp(), newsItem.getContent());
 	}
-	
-	// Helper methods to compare values against database
-	static Timestamp convertToDatabaseColumn(LocalDateTime localDateTime) {
-    	return (localDateTime == null ? null : Timestamp.valueOf(localDateTime));
-    }
-	
-	static Integer convertToDatabaseColumn(SeatNumber seatNumber) {
-		return (seatNumber == null ? null : seatNumber.intValue());
-	}
-	
 }

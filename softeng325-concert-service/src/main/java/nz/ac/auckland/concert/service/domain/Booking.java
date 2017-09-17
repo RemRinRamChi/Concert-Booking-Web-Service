@@ -1,7 +1,6 @@
 package nz.ac.auckland.concert.service.domain;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -102,7 +101,7 @@ public class Booking {
 	}
 
 	public Set<Seat> getSeats() {
-		return Collections.unmodifiableSet(_seats);
+		return _seats;
 	}
 
 	public PriceBand getPriceBand() {
@@ -133,29 +132,23 @@ public class Booking {
 			return true;
 
 		Booking rhs = (Booking) obj;
-		return new EqualsBuilder().append(_concert, rhs._concert)
+		return new EqualsBuilder().append(_id, rhs._id)
+				.append(_concert, rhs._concert)
+				.append(_user, rhs._user)
 				.append(_dateTime, rhs._dateTime)
 				.append(_seats, rhs._seats)
-				.append(_priceBand, rhs._priceBand).isEquals();
+				.append(_priceBand, rhs._priceBand)
+				.isEquals();
 	}
 
 	@Override
 	public int hashCode() {
-		return new HashCodeBuilder(17, 31).append(_concert)
-				.append(_dateTime).append(_seats)
-				.append(_priceBand).hashCode();
-	}
-
-	@Override
-	public String toString() {
-		StringBuffer buffer = new StringBuffer();
-		buffer.append("concert: ");
-		buffer.append(_concert.getTitle());
-		buffer.append(", date/time ");
-		buffer.append(_seats.size());
-		buffer.append(" ");
-		buffer.append(_priceBand);
-		buffer.append(" seats.");
-		return buffer.toString();
+		return new HashCodeBuilder(17, 31).append(_id)
+				.append(_concert)
+				.append(_user)
+				.append(_dateTime)
+				.append(_seats)
+				.append(_priceBand)
+				.hashCode();
 	}
 }

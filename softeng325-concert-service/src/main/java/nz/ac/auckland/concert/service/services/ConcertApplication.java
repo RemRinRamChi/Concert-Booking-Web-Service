@@ -1,11 +1,16 @@
 package nz.ac.auckland.concert.service.services;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import javax.persistence.EntityManager;
 import javax.ws.rs.ApplicationPath;
 import javax.ws.rs.core.Application;
+
+import nz.ac.auckland.concert.service.domain.Booking;
+import nz.ac.auckland.concert.service.domain.NewsItem;
+import nz.ac.auckland.concert.service.domain.User;
 
 /**
  * JAX-RS application subclass for the Concert Web service. This class is
@@ -40,9 +45,21 @@ public class ConcertApplication extends Application {
 			em = PersistenceManager.instance().createEntityManager();
 			em.getTransaction().begin();
 		
-			em.createQuery("delete from Booking").executeUpdate();
-			em.createQuery("delete from NewsItem").executeUpdate();
-			em.createQuery("delete from User").executeUpdate();
+			// can't use JPQL to bulk delete "delete from ?" because deletion is not cascaded
+			List<Booking> bookings = em.createQuery("select b from Booking b", Booking.class).getResultList();
+			for(Booking b : bookings){
+				em.remove(b);
+			}
+			
+			List<NewsItem> newsItems = em.createQuery("select n from NewsItem n", NewsItem.class).getResultList();
+			for(NewsItem n : newsItems){
+				em.remove(n);
+			}
+			
+			List<User> users = em.createQuery("select u from User u", User.class).getResultList();
+			for(User u : users){
+				em.remove(u);
+			}
 			
 			em.getTransaction().commit();
 		
@@ -51,7 +68,7 @@ public class ConcertApplication extends Application {
 				em.close();
 			}
 		}
-
+		
 	}
 
 	@Override
