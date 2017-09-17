@@ -8,6 +8,7 @@ import javax.persistence.EntityManager;
 import javax.ws.rs.ApplicationPath;
 import javax.ws.rs.core.Application;
 
+import nz.ac.auckland.concert.service.domain.AuthenticationToken;
 import nz.ac.auckland.concert.service.domain.Booking;
 import nz.ac.auckland.concert.service.domain.NewsItem;
 import nz.ac.auckland.concert.service.domain.User;
@@ -49,6 +50,12 @@ public class ConcertApplication extends Application {
 			List<Booking> bookings = em.createQuery("select b from Booking b", Booking.class).getResultList();
 			for(Booking b : bookings){
 				em.remove(b);
+			}
+
+			List<AuthenticationToken> tokens = 
+					em.createQuery("select a from AuthenticationToken a", AuthenticationToken.class).getResultList();
+			for(AuthenticationToken a : tokens){
+				em.remove(a);
 			}
 			
 			List<NewsItem> newsItems = em.createQuery("select n from NewsItem n", NewsItem.class).getResultList();

@@ -30,6 +30,7 @@
 		<class>nz.ac.auckland.concert.service.domain.Performer</class>
 		<class>nz.ac.auckland.concert.service.domain.Seat</class>
 		<class>nz.ac.auckland.concert.service.domain.User</class>
+		<class>nz.ac.auckland.concert.service.domain.AuthenticationToken</class>
 		<properties>
 			<!--  Configure the data source. In this case the embedded H2 database
 			      is used. -->
