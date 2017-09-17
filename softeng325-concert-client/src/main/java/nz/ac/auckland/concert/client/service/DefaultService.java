@@ -14,6 +14,7 @@ import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.Invocation.Builder;
+import javax.ws.rs.core.Cookie;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.NewCookie;
@@ -59,7 +60,7 @@ public class DefaultService implements ConcertService {
 	
 	private List<String> imageNames;
 	
-	private NewCookie authenticationToken;
+	private Cookie authenticationToken;
 	
 	public DefaultService() {
 		// Use ClientBuilder to create a new client that can be used to create
@@ -413,7 +414,7 @@ public class DefaultService implements ConcertService {
 		Map<String, NewCookie> cookies = response.getCookies();
 		
 		if(cookies.containsKey(Config.CLIENT_COOKIE)) {
-			authenticationToken = cookies.get(Config.CLIENT_COOKIE);
+			authenticationToken = new Cookie(Config.CLIENT_COOKIE,cookies.get(Config.CLIENT_COOKIE).getValue());
 		}
 	}
 

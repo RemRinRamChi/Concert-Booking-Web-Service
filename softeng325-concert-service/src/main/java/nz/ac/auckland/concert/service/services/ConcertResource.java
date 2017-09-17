@@ -37,6 +37,7 @@ import nz.ac.auckland.concert.common.dto.SeatDTO;
 import nz.ac.auckland.concert.common.dto.UserDTO;
 import nz.ac.auckland.concert.common.message.Messages;
 import nz.ac.auckland.concert.common.util.Config;
+import nz.ac.auckland.concert.service.domain.AuthenticationToken;
 import nz.ac.auckland.concert.service.domain.Booking;
 import nz.ac.auckland.concert.service.domain.Concert;
 import nz.ac.auckland.concert.service.domain.CreditCard;
@@ -152,7 +153,7 @@ public class ConcertResource {
 		// return the UserDTO
 		builder = Response.ok(DomainMapper.userToDTO(user));
 		// with an authentication token
-		builder.cookie(makeCookie(user.getUsername()));
+		builder.cookie(makeToken(user));
 
 		return builder.build();
 	}
@@ -184,7 +185,7 @@ public class ConcertResource {
 		} else if (user.getPassword().equals(userDTO.getPassword())){
 			// convert and return the user from domain which has all properties set
 			builder = Response.ok(DomainMapper.userToDTO(user));
-			builder.cookie(makeCookie(user.getUsername()));
+			builder.cookie(makeToken(user));
 		// wrong password
 		} else {
 			builder = Response.status(Status.BAD_REQUEST).entity(Messages.AUTHENTICATE_USER_WITH_ILLEGAL_PASSWORD);
@@ -208,9 +209,11 @@ public class ConcertResource {
 		// Start a new transaction.
 		em.getTransaction().begin();
 		
-		User user = em.find(User.class, token);
-		
-		handlePossibleUnrecognisedToken(user);
+		// check if authentication token exists in database
+		AuthenticationToken authenticationToken = em.find(AuthenticationToken.class, token);
+		handlePossibleUnrecognisedToken(authenticationToken);
+		// then returns the associated user
+		User user = authenticationToken.getUser();
 		
 		// token identifies a user, so proceed to adding credit card information to user 
 		CreditCard creditCard = DomainMapper.creditCardToDomainModel(creditCardDTO);
@@ -241,9 +244,12 @@ public class ConcertResource {
 		// Start a new transaction.
 		em.getTransaction().begin();
 		
-		User user = em.find(User.class, token);
+		// check if authentication token exists in database
+		AuthenticationToken authenticationToken = em.find(AuthenticationToken.class, token);
+		handlePossibleUnrecognisedToken(authenticationToken);
+		// then returns the associated user
+		User user = authenticationToken.getUser();
 		
-		handlePossibleUnrecognisedToken(user);
 		
 		// Use the EntityManager to retrieve all Bookings with the same username.
 		TypedQuery<Booking> bookingQuery = 
@@ -276,9 +282,11 @@ public class ConcertResource {
 		// Start a new transaction.
 		em.getTransaction().begin();
 		
-		User user = em.find(User.class, token);
-		
-		handlePossibleUnrecognisedToken(user);
+		// check if authentication token exists in database
+		AuthenticationToken authenticationToken = em.find(AuthenticationToken.class, token);
+		handlePossibleUnrecognisedToken(authenticationToken);
+		// then returns the associated user
+		User user = authenticationToken.getUser();
 		
 		// Get the Concert
 		Concert concert = em.find(Concert.class, reservationRequestDTO.getConcertId());
@@ -398,9 +406,11 @@ public class ConcertResource {
 		// Start a new transaction.
 		em.getTransaction().begin();
 		
-		User user = em.find(User.class, token);
-		
-		handlePossibleUnrecognisedToken(user);
+		// check if authentication token exists in database
+		AuthenticationToken authenticationToken = em.find(AuthenticationToken.class, token);
+		handlePossibleUnrecognisedToken(authenticationToken);
+		// then returns the associated user
+		User user = authenticationToken.getUser();
 				
 		// TODO hmm should this be done before checking whether expired?
 		if(user.getCreditCards().size() == 0){
@@ -490,24 +500,45 @@ public class ConcertResource {
 	
 	/**
 	 * Check if authentication token is recognised (associated with a user) and 
-	 * respond accordingly if not (401 Unauthorized)
+	 * respond accordingly if not (401 Unauthorized) // TODO 400 more appropriate
 	 */
-	private void handlePossibleUnrecognisedToken(User user){
-		if(user == null){
+	private void handlePossibleUnrecognisedToken(AuthenticationToken token){
+		if(token == null){
 			throw new BadRequestException(Response.status(Status.UNAUTHORIZED).entity(Messages.BAD_AUTHENTICATON_TOKEN).build());
 		}
 	}
 	
 	/**
-	 * Make a new token (cookie) using the user's username
-	 * @param username
-	 * @param password
-	 * @return token
+	 * Make a new token (cookie) for a specific user
 	 */
-	private NewCookie makeCookie(String username){
+	private NewCookie makeToken(User user){
 		NewCookie newCookie = null;
-	
-		newCookie = new NewCookie(Config.CLIENT_COOKIE, username);
+		
+		// Acquire an EntityManager (creating a new persistence context).
+		EntityManager em = PersistenceManager.instance().createEntityManager();
+		// Start a new transaction.
+		em.getTransaction().begin();
+		// Try to find if there is already a token associated with the user
+		List<AuthenticationToken> tokens = 
+				em.createQuery("select a from AuthenticationToken a where a._user = :user", AuthenticationToken.class)
+				.setParameter("user", user)
+				.getResultList();
+		
+		AuthenticationToken token = null;
+		
+		// if there isn't create a new one
+		if(tokens.size() == 0){
+			token = new AuthenticationToken(user);
+			em.persist(token);
+		// if there is one, return it
+		} else if (tokens.size() == 1){
+			token = tokens.get(0);
+		}
+		
+		em.getTransaction().commit();
+		em.close();
+		
+		newCookie = new NewCookie(Config.CLIENT_COOKIE, token.getValue());
 		_logger.info("Generated cookie: " + newCookie.getValue());
 		
 		return newCookie;

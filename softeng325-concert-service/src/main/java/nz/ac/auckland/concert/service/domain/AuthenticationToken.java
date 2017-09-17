@@ -21,7 +21,7 @@ public class AuthenticationToken {
 	public AuthenticationToken(User user){
 		_user = user;
 		// will be unique since usernames are unique
-		_value = generateRandomString(7)+user.getUsername();
+		_value = generateRandomString(5)+user.getUsername();
 	}
 	
 	public String getValue(){
@@ -37,7 +37,8 @@ public class AuthenticationToken {
 	 */
 	private String generateRandomString(int stringLength) {
         Random random = new Random();
-        String chars = "THIS SERVICE IS AWESOME, I RATE 7/11 M8";
+        // Cookies don't allow a starting value of ","
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
         StringBuilder stringBuilder = new StringBuilder();
         while (stringBuilder.length() < stringLength) {
             stringBuilder.append(chars.charAt(random.nextInt(chars.length())));
