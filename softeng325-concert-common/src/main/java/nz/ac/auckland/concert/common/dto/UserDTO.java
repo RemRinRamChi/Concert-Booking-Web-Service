@@ -77,7 +77,7 @@ public class UserDTO {
 	            append(_username).
 	            append(_password).
 	            append(_firstname).
-	            append(_password).
+	            append(_lastname).
 	            hashCode();
 	}
 }

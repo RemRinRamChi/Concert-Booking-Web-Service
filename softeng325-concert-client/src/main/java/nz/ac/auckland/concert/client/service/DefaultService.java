@@ -376,7 +376,6 @@ public class DefaultService implements ConcertService {
 	}
 	
 
-	// TODO does a performer have more than 1 image??
 	/**
 	 * Downloads a specific performer's image
 	 * 

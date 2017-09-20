@@ -2,7 +2,6 @@ package nz.ac.auckland.concert.service.domain;
 
 import java.time.LocalDate;
 
-import javax.persistence.Convert;
 import javax.persistence.Embeddable;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
@@ -10,7 +9,6 @@ import javax.persistence.Enumerated;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
-import nz.ac.auckland.concert.service.domain.jpa.LocalDateTimeConverter;
 import nz.ac.auckland.concert.common.dto.CreditCardDTO.Type;
 
 /**

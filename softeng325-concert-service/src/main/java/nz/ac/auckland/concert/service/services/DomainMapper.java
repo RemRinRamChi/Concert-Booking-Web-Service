@@ -27,11 +27,6 @@ import nz.ac.auckland.concert.service.domain.User;
  */
 public class DomainMapper {
 	static ConcertDTO concertToDTO(Concert concert){
-		Set<Long> performerIds = new HashSet<Long>();
-		for(Performer p : concert.getPerformers()){
-			performerIds.add(p.getId());
-		}
-		
 		return new ConcertDTO(concert.getId(), concert.getTitle(), 
 				concert.getDates(), concert.getTariff(), concert.getPerformerIds());
 	}
@@ -53,7 +48,7 @@ public class DomainMapper {
 	static Set<PerformerDTO> performersToDTO(List<Performer> performers){
 		Set<PerformerDTO> performerDTOs = new HashSet<PerformerDTO>();
 		for(Performer p : performers){
-			performerDTOs.add(DomainMapper.performerToDTO(p));
+			performerDTOs.add(performerToDTO(p));
 		}
 		return performerDTOs;
 	}
@@ -82,7 +77,7 @@ public class DomainMapper {
 	static Set<BookingDTO> bookingsToDTO(List<Booking> bookings){
 		Set<BookingDTO> bookingDTOs = new HashSet<BookingDTO>();
 		for(Booking b : bookings){
-			bookingDTOs.add(DomainMapper.bookingToDTO(b));
+			bookingDTOs.add(bookingToDTO(b));
 		}
 		return bookingDTOs;
 	}
