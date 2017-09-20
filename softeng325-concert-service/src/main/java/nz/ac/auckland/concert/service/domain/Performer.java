@@ -100,7 +100,7 @@ public class Performer {
             return true;
 
         Performer rhs = (Performer) obj;
-        return new EqualsBuilder().append(_id, rhs._id).
+        return new EqualsBuilder().
             append(_name, rhs._name).
             append(_imageName, rhs._imageName).
             append(_genre, rhs._genre).
@@ -109,7 +109,7 @@ public class Performer {
 	
 	@Override
 	public int hashCode() {
-		return new HashCodeBuilder(17, 31).append(_id). 
+		return new HashCodeBuilder(17, 31). 
 	            append(_name).
 	            append(_imageName).
 	            append(_genre).

@@ -2,6 +2,10 @@ package nz.ac.auckland.concert.common.dto;
 
 import java.time.LocalDateTime;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlRootElement;
+
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
@@ -16,6 +20,8 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
  * _content   the news item context text.   
  *
  */
+@XmlRootElement
+@XmlAccessorType(XmlAccessType.FIELD)
 public class NewsItemDTO {
 
 	private Long _id;

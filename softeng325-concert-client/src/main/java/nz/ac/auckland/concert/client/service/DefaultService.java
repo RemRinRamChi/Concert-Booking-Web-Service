@@ -224,10 +224,10 @@ public class DefaultService implements ConcertService {
 		
 		ReservationDTO reservation = null;
 		
-		// fields missing //TODO is 0 alright for concert id?
+		// fields missing
 		if(reservationRequest.getConcertId() == null || reservationRequest.getDate() == null
 				|| reservationRequest.getNumberOfSeats() == 0 || reservationRequest.getSeatType() == null){
-			throw new ServiceException(Messages.CREATE_USER_WITH_MISSING_FIELDS);
+			throw new ServiceException(Messages.RESERVATION_REQUEST_WITH_MISSING_FIELDS);
 		}
 		
 		handlePossibleUnauthenticatedRequest();
@@ -376,7 +376,7 @@ public class DefaultService implements ConcertService {
 	}
 	
 
-	// TODO does a performer has more than 1 image??
+	// TODO does a performer have more than 1 image??
 	/**
 	 * Downloads a specific performer's image
 	 * 
@@ -392,7 +392,7 @@ public class DefaultService implements ConcertService {
 				.withS3Client(s3)
 				.build();
 		try {
-		    Download xfer = mgr.download(AWS_BUCKET, img, new File(img)); //TODO maybe there's a better way
+		    Download xfer = mgr.download(AWS_BUCKET, img, new File(img)); //TODO maybe there's a better way, and need to test if pic downloaded
 		    xfer.waitForCompletion();
 		} catch (AmazonServiceException e) {
 		    System.err.println("Amazon service error: " + e.getMessage());

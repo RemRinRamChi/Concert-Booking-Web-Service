@@ -132,7 +132,7 @@ public class Booking {
 			return true;
 
 		Booking rhs = (Booking) obj;
-		return new EqualsBuilder().append(_id, rhs._id)
+		return new EqualsBuilder()
 				.append(_concert, rhs._concert)
 				.append(_user, rhs._user)
 				.append(_dateTime, rhs._dateTime)
@@ -143,7 +143,7 @@ public class Booking {
 
 	@Override
 	public int hashCode() {
-		return new HashCodeBuilder(17, 31).append(_id)
+		return new HashCodeBuilder(17, 31)
 				.append(_concert)
 				.append(_user)
 				.append(_dateTime)

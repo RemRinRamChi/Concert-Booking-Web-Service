@@ -12,6 +12,7 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.CookieParam;
 import javax.ws.rs.GET;
+import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -138,7 +139,7 @@ public class ConcertResource {
 		em.getTransaction().begin();
 		
 		// user name taken
-		if(em.find(User.class, userDTO.getUsername()) != null){ //TODO dk if bad request
+		if(em.find(User.class, userDTO.getUsername()) != null){
 			builder = Response.status(Status.BAD_REQUEST).entity(Messages.CREATE_USER_WITH_NON_UNIQUE_NAME);
 			throw new BadRequestException(builder.build());			
 		}
@@ -358,9 +359,7 @@ public class ConcertResource {
 		
 		// close entity manager
 		em.close();
-		
-		// TODO consider flushing and clearing?
-		
+				
 		// Run a separate thread to remove the booking if still unconfirmed at expiry time
 		new Thread(){
 			public void run(){
@@ -377,7 +376,7 @@ public class ConcertResource {
 				em.getTransaction().begin();				
 				em.setProperty("javax.persistence.lock.timeout", LOCK_TIMEOUT_MILLISECONDS);
 				Booking bookingToConfirm = em.find(Booking.class, unconfirmedBooking.getId(), LockModeType.PESSIMISTIC_WRITE);
-				// remove booking if still unconfirmed AND //TODO booking still exists
+				// remove booking if still unconfirmed AND //TODO booking still exists ask tutor
 				if(bookingToConfirm != null && bookingToConfirm.getConfirmationStatus() == false){
 					em.remove(bookingToConfirm);
 				}
@@ -412,14 +411,22 @@ public class ConcertResource {
 		// then returns the associated user
 		User user = authenticationToken.getUser();
 				
-		// TODO hmm should this be done before checking whether expired?
+		em.setProperty("javax.persistence.lock.timeout", LOCK_TIMEOUT_MILLISECONDS);
+		Booking bookingToConfirm = em.find(Booking.class, reservationDTO.getId(), LockModeType.PESSIMISTIC_WRITE);
+		
 		if(user.getCreditCards().size() == 0){
+			
+			// delete booking if it still exists and if credit card is not registered
+			if(bookingToConfirm != null && bookingToConfirm.getUser().equals(user)){
+				em.remove(bookingToConfirm);
+			} 
+			
+			// commit and release locks
+			em.getTransaction().commit();
+			
 			builder = Response.status(Status.BAD_REQUEST).entity(Messages.CREDIT_CARD_NOT_REGISTERED);
 			throw new BadRequestException(builder.build());
 		}
-		
-		em.setProperty("javax.persistence.lock.timeout", LOCK_TIMEOUT_MILLISECONDS);
-		Booking bookingToConfirm = em.find(Booking.class, reservationDTO.getId(), LockModeType.PESSIMISTIC_WRITE);
 		
 		// if booking associated with the user cannot be found, that means the booking has expired
 		if(bookingToConfirm == null || !bookingToConfirm.getUser().equals(user)){
@@ -500,11 +507,11 @@ public class ConcertResource {
 	
 	/**
 	 * Check if authentication token is recognised (associated with a user) and 
-	 * respond accordingly if not (401 Unauthorized) // TODO 400 more appropriate
+	 * respond accordingly if not (401 Unauthorized)
 	 */
 	private void handlePossibleUnrecognisedToken(AuthenticationToken token){
 		if(token == null){
-			throw new BadRequestException(Response.status(Status.UNAUTHORIZED).entity(Messages.BAD_AUTHENTICATON_TOKEN).build());
+			throw new NotAuthorizedException(Response.status(Status.UNAUTHORIZED).entity(Messages.BAD_AUTHENTICATON_TOKEN).build());
 		}
 	}
 	
