@@ -376,7 +376,7 @@ public class ConcertResource {
 				em.getTransaction().begin();				
 				em.setProperty("javax.persistence.lock.timeout", LOCK_TIMEOUT_MILLISECONDS);
 				Booking bookingToConfirm = em.find(Booking.class, unconfirmedBooking.getId(), LockModeType.PESSIMISTIC_WRITE);
-				// remove booking if still unconfirmed AND //TODO booking still exists ask tutor
+				// remove booking if still unconfirmed AND 
 				if(bookingToConfirm != null && bookingToConfirm.getConfirmationStatus() == false){
 					em.remove(bookingToConfirm);
 				}
@@ -486,9 +486,9 @@ public class ConcertResource {
 			// only the just posted news
 			newNewsItems.add(newsItemDTO);
 			GenericEntity<List<NewsItemDTO>> entity = new GenericEntity<List<NewsItemDTO>>(newNewsItems){};
-			
+			ResponseBuilder builder = Response.ok(entity);
 			// return the news
-			response.resume(entity);
+			response.resume(builder.build());
 		} else {
 			List<NewsItemDTO> newNewsItems = new ArrayList<>();
 			// return all the news after a certain news id (the subscriber's last received news item)
@@ -498,14 +498,15 @@ public class ConcertResource {
 				}
 			}
 			GenericEntity<List<NewsItemDTO>> entity = new GenericEntity<List<NewsItemDTO>>(newNewsItems){};
-			
-			// return the news items
-			response.resume(entity);
+			ResponseBuilder builder = Response.ok(entity);
+			// return the news
+			response.resume(builder.build());
 		}
 		
 	}
 	
 	/**
+	 * BAD_AUTHENTICATON_TOKEN
 	 * Check if authentication token is recognised (associated with a user) and 
 	 * respond accordingly if not (401 Unauthorized)
 	 */
