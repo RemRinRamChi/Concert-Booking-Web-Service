@@ -1,6 +1,5 @@
 package nz.ac.auckland.concert.service.services;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -16,8 +15,6 @@ import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
-import javax.ws.rs.container.AsyncResponse;
-import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.GenericEntity;
 import javax.ws.rs.core.NewCookie;
 import javax.ws.rs.core.Response;
@@ -30,7 +27,6 @@ import org.slf4j.LoggerFactory;
 import nz.ac.auckland.concert.common.dto.BookingDTO;
 import nz.ac.auckland.concert.common.dto.ConcertDTO;
 import nz.ac.auckland.concert.common.dto.CreditCardDTO;
-import nz.ac.auckland.concert.common.dto.NewsItemDTO;
 import nz.ac.auckland.concert.common.dto.PerformerDTO;
 import nz.ac.auckland.concert.common.dto.ReservationDTO;
 import nz.ac.auckland.concert.common.dto.ReservationRequestDTO;
@@ -42,32 +38,21 @@ import nz.ac.auckland.concert.service.domain.AuthenticationToken;
 import nz.ac.auckland.concert.service.domain.Booking;
 import nz.ac.auckland.concert.service.domain.Concert;
 import nz.ac.auckland.concert.service.domain.CreditCard;
-import nz.ac.auckland.concert.service.domain.NewsItem;
 import nz.ac.auckland.concert.service.domain.Performer;
 import nz.ac.auckland.concert.service.domain.User;
 import nz.ac.auckland.concert.service.util.TheatreUtility;
 
 /**
- * Class to implement a simple REST Web service for managing Concerts.
+ * Class to implement a simple REST Web service for managing Concerts, Performers, Users and Bookings.
  *
  */
-
 @Path("/concerts")
 public class ConcertResource {
 	public static final int LOCK_TIMEOUT_MILLISECONDS = 5000;
 
 	private static Logger _logger = LoggerFactory
 			.getLogger(ConcertResource.class);
-	
-	/**
-	 * The subscribed client's response for news item
-	 */
-	private AsyncResponse response = null;
-	/**
-	 * The client's most recent news item
-	 */
-	private String mostRecentClientNews = null;
-	
+
 	/**
 	 * Retrieves all Concerts
 	 * 
@@ -254,7 +239,9 @@ public class ConcertResource {
 		
 		// Use the EntityManager to retrieve all Bookings with the same username.
 		TypedQuery<Booking> bookingQuery = 
-				em.createQuery("select b from Booking b where b._user._username = :username", Booking.class)
+				em.createQuery("select b from Booking b "
+						+ "left join fetch b._seats " //TODO check if i did this properly
+						+ "where b._user._username = :username", Booking.class)
 				.setParameter("username", user.getUsername());
 		List<Booking> bookings = bookingQuery.getResultList();
 		
@@ -298,7 +285,6 @@ public class ConcertResource {
 			throw new BadRequestException(builder.build());
 		}
 		
-		// TODO does it matter if I fetch first or after where
 		// Concert, date and price brand classification is used to narrow down the 
 		// number of locks to only those of the same price brand
 		// Use the EntityManager to retrieve all Bookings with the same user name.
@@ -442,69 +428,7 @@ public class ConcertResource {
 		
 		return builder.build();
 	}
-	
-	/**
-	 * Subscribe for news item
-	 * @param token
-	 */
-	@GET
-	@Path("/news")
-	public void subscribe(@Suspended AsyncResponse clientResponse, @CookieParam(Config.RECENT_NEWS) String news){
-		// store the most recent news for black out problem prevention
-		mostRecentClientNews = news;
-		response = clientResponse;
-		
-		// TODO how to wait in background?
-	}
-	
-	@POST
-	@Path("/news")
-	@Consumes(javax.ws.rs.core.MediaType.APPLICATION_XML)
-	public void sendNewsItem(NewsItemDTO newsItemDTO){
-		// Acquire an EntityManager (creating a new persistence context).
-		EntityManager em = PersistenceManager.instance().createEntityManager();
-		// Start a new transaction.
-		em.getTransaction().begin();
-		// store the news item to database
-		em.persist(DomainMapper.newsItemToDomainModel(newsItemDTO));
-		
-		em.getTransaction().commit();
 
-		em.getTransaction().begin();
-
-		// get all the news items in the database
-		TypedQuery<NewsItem> newsItemQuery = 
-				em.createQuery("select n from NewsItem n", NewsItem.class);
-		List<NewsItem> newsItems = newsItemQuery.getResultList();
-
-		if(response == null){
-			// do nothing since nobody subscribed
-		
-		// null means client is newly subscribed so only have to return the just posted news
-		} else if(mostRecentClientNews == null){
-			List<NewsItemDTO> newNewsItems = new ArrayList<>();
-			// only the just posted news
-			newNewsItems.add(newsItemDTO);
-			GenericEntity<List<NewsItemDTO>> entity = new GenericEntity<List<NewsItemDTO>>(newNewsItems){};
-			ResponseBuilder builder = Response.ok(entity);
-			// return the news
-			response.resume(builder.build());
-		} else {
-			List<NewsItemDTO> newNewsItems = new ArrayList<>();
-			// return all the news after a certain news id (the subscriber's last received news item)
-			for(NewsItem n : newsItems){
-				if(n.getId() > Long.parseLong(mostRecentClientNews)){
-					newNewsItems.add(DomainMapper.newsItemToDTO(n));
-				}
-			}
-			GenericEntity<List<NewsItemDTO>> entity = new GenericEntity<List<NewsItemDTO>>(newNewsItems){};
-			ResponseBuilder builder = Response.ok(entity);
-			// return the news
-			response.resume(builder.build());
-		}
-		
-	}
-	
 	/**
 	 * BAD_AUTHENTICATON_TOKEN
 	 * Check if authentication token is recognised (associated with a user) and 

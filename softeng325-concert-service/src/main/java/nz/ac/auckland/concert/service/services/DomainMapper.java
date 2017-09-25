@@ -107,7 +107,7 @@ public class DomainMapper {
 	}	
 	 
 	static NewsItemDTO newsItemToDTO(NewsItem newsItem){
-		return new NewsItemDTO(newsItem.getId(), newsItem.getTimetamp(), newsItem.getContent());
+		return new NewsItemDTO(newsItem.getNewsItemId(), newsItem.getTimetamp(), newsItem.getContent());
 	}
 	
 	static NewsItem newsItemToDomainModel(NewsItemDTO newsItem){

@@ -30,6 +30,8 @@ public class NewsItem {
 	@GeneratedValue
 	private Long _id;
 	
+	private Long _newsItemId;
+	
 	@Convert(converter = LocalDateTimeConverter.class)
 	private LocalDateTime _timestamp;
 	
@@ -37,14 +39,18 @@ public class NewsItem {
 	
 	public NewsItem() {}
 	
-	public NewsItem(Long id, LocalDateTime timestamp, String content) {
-		_id = id;
+	public NewsItem(Long newsItemId, LocalDateTime timestamp, String content) {
+		_newsItemId = newsItemId;
 		_timestamp = timestamp;
 		_content = content;
 	}
 	
 	public Long getId() {
 		return _id;
+	}
+	
+	public Long getNewsItemId(){
+		return _newsItemId;
 	}
 	
 	public LocalDateTime getTimetamp() {
@@ -64,6 +70,7 @@ public class NewsItem {
 
         NewsItem rhs = (NewsItem) obj;
         return new EqualsBuilder().
+            append(_newsItemId, rhs._newsItemId).
             append(_timestamp, rhs._timestamp).
             append(_content, rhs._content).
             isEquals();
@@ -71,7 +78,8 @@ public class NewsItem {
 	
 	@Override
 	public int hashCode() {
-		return new HashCodeBuilder(17, 31). 
+		return new HashCodeBuilder(17, 31).
+				append(_newsItemId).
 	            append(_timestamp).
 	            append(_content).
 	            hashCode();

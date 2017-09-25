@@ -38,6 +38,7 @@ public class ConcertApplication extends Application {
 
 	public ConcertApplication() {
 		_singletons.add(PersistenceManager.instance());
+		_singletons.add(new NewsResource());
 		_classes.add(ConcertResource.class);
 		
 		// clear the effects of previous tests running

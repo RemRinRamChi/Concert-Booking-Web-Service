@@ -9,6 +9,7 @@ public class Config {
 	 * Name of a cookie exchanged by clients and the Web service.
 	 */
 	public static final String CLIENT_COOKIE = "clientId";
-	
-	public static final String RECENT_NEWS = "mostRecentNews";
+		
+	public static final String CLIENT_SUBSCRIPTION = "clientSubscriptionId";
+
 }

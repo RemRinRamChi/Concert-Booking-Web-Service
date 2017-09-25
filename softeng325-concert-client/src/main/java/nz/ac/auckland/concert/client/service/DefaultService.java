@@ -22,6 +22,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.NewCookie;
 import javax.ws.rs.core.Response;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.regions.Regions;
@@ -45,6 +48,10 @@ import nz.ac.auckland.concert.common.util.Config;
 
 // TODO javadoc and the special message exception
 public class DefaultService implements ConcertService {
+
+	private static Logger _logger = LoggerFactory
+			.getLogger(DefaultService.class);
+	
 	// AWS S3 access credentials for concert images.
 	private static final String AWS_ACCESS_KEY_ID = "AKIAIDYKYWWUZ65WGNJA";
 	private static final String AWS_SECRET_ACCESS_KEY = "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";
@@ -60,31 +67,17 @@ public class DefaultService implements ConcertService {
 
 	private Cookie authenticationToken;
 
-	private boolean subscribe;
+	private String subscriptionId;
 	
-	private String mostRecentClientNews;
+	private boolean subscribe;
 
-	public DefaultService() {
-		// Create an AmazonS3 object that represents a connection with the
-		// remote S3 service.
-		BasicAWSCredentials awsCredentials = new BasicAWSCredentials(
-				AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY);
-		s3 = AmazonS3ClientBuilder
-				.standard()
-				.withRegion(Regions.AP_SOUTHEAST_2)
-				.withCredentials(
-						new AWSStaticCredentialsProvider(awsCredentials))
-				.build();
-		
-		// Find images names stored in S3. 
-		imageNames = getImageNames(s3);
-		 
+	public DefaultService() {		
 		// Initially unauthenticated
 		authenticationToken = null;
 
+		// Initially no registered for subscription
+		subscriptionId = null;
 		subscribe = false;
-		
-		mostRecentClientNews = null;
 	}
 
 	@Override
@@ -225,6 +218,21 @@ public class DefaultService implements ConcertService {
 
 	@Override
 	public Image getImageForPerformer(PerformerDTO performer) throws ServiceException {
+		// Create an AmazonS3 object that represents a connection with the
+		// remote S3 service.
+		BasicAWSCredentials awsCredentials = new BasicAWSCredentials(
+				AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY);
+		
+		s3 = AmazonS3ClientBuilder
+				.standard()
+				.withRegion(Regions.AP_SOUTHEAST_2)
+				.withCredentials(
+						new AWSStaticCredentialsProvider(awsCredentials))
+				.build();
+		
+		// Find images names stored in S3. 
+		imageNames = getImageNames(s3);
+		
 		BufferedImage downloadedImage = null;
 		
 		// download performer's image if exist
@@ -388,49 +396,89 @@ public class DefaultService implements ConcertService {
 
 		return bookings;
 	}
-
+	
 	@Override
 	public void subscribeForNewsItems(NewsItemListener listener) {
 		Client client = ClientBuilder.newClient();
-		subscribe = true;
 		
-		// Get all user bookings
-		WebTarget target = client.target(WEB_SERVICE_URI + "/news");
+		Response response = null;
+		
+		// first try to get a subscription id
+		try {
+			Builder builder = client.target(WEB_SERVICE_URI + "/news/subscription/signup").request();
 
-		try{
-			target.request().async().get(new InvocationCallback<Response>() {
-				public void completed(Response response) {
-					handlePossibleServiceCommunicationError(response);
-					if(subscribe){
-						Set<NewsItemDTO> newsItems = response.readEntity(new GenericType<Set<NewsItemDTO>>(){});
-						for(NewsItemDTO n : newsItems){
-							listener.newsItemReceived(n);
-							mostRecentClientNews = n.getId().toString();
-						}
-						if(mostRecentClientNews != null){
-							target.request().cookie(new Cookie(Config.RECENT_NEWS,mostRecentClientNews)).async().get(this);
-						} else {
-							target.request().async().get(this);
-						}
+			response = builder.get();
+
+			handlePossibleServiceCommunicationError(response);
+			
+			subscriptionId = response.readEntity(String.class);
+
+		} catch(ProcessingException e){
+			handleServiceCommunicationError();
+		} finally {			// Close the Response object.
+			response.close();
+		}
+		
+		subscribe = true;
+
+		// Get subscribed
+		WebTarget target = client.target(WEB_SERVICE_URI + "/news/subscription");
+
+		_logger.info("Try to subscribe");
+		// include subscription id when subscribing with an invocation callback object
+		target.request().cookie(new Cookie(Config.CLIENT_SUBSCRIPTION,subscriptionId))
+		.async().get(new InvocationCallback<Response>() {
+			public void completed(Response response) {
+				handlePossibleServiceCommunicationError(response);
+				
+				// post any news items received
+				Set<NewsItemDTO> newsItems = response.readEntity(new GenericType<Set<NewsItemDTO>>(){});
+				if(subscribe){
+					for(NewsItemDTO n : newsItems){
+						listener.newsItemReceived(n);
 					}
 				}
-	
-				// TODO er need to close response somewhere?
-				public void failed(Throwable t) {
+				response.close();
+				
+				if(subscribe){
+					target.request().cookie(new Cookie(Config.CLIENT_SUBSCRIPTION,subscriptionId)).async().get(this);
 				}
-	
-			});
-		} finally {
-			client.close();
-		}
+			}
 
-		throw new UnsupportedOperationException(); // TODO delete this and also service communcation error
+			public void failed(Throwable t) {
+			}
+
+		});
+
 
 	}
 
 	@Override
 	public void cancelSubscription() {
 		subscribe = false;
+		
+		// if client is actually subscribed
+		if(subscriptionId != null){
+			Client client = ClientBuilder.newClient();
+			Response response = null;
+
+			_logger.info("Try to unsubscribe");
+			try {
+				// Get all user bookings
+				Builder builder = client.target(WEB_SERVICE_URI + "/news/subscription/{id}")
+						.resolveTemplate("id", subscriptionId).request();
+
+				response = builder.delete();
+
+				handlePossibleServiceCommunicationError(response);
+
+			} catch(ProcessingException e){
+				handleServiceCommunicationError();
+			} finally {			// Close the Response object.
+				response.close();
+				client.close();
+			}
+		}
 	}
 
 	/**
