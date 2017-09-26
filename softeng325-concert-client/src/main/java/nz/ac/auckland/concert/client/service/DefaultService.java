@@ -2,7 +2,7 @@ package nz.ac.auckland.concert.client.service;
 
 import java.awt.Image;
 import java.awt.image.BufferedImage;
-import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -221,40 +221,38 @@ public class DefaultService implements ConcertService {
 
 	@Override
 	public Image getImageForPerformer(PerformerDTO performer) throws ServiceException {
-		// Create an AmazonS3 object that represents a connection with the
-		// remote S3 service.
-		BasicAWSCredentials awsCredentials = new BasicAWSCredentials(
-				AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY);
-		
-		s3 = AmazonS3ClientBuilder
-				.standard()
-				.withRegion(Regions.AP_SOUTHEAST_2)
-				.withCredentials(
-						new AWSStaticCredentialsProvider(awsCredentials))
-				.build();
-		
-		// Find images names stored in S3. 
-		imageNames = getImageNames(s3);
-		
 		BufferedImage downloadedImage = null;
+		if(performer.getImageName() == null){
+			throw new ServiceException(Messages.NO_IMAGE_FOR_PERFORMER);
+		}
 		
+		try {
+			// Create an AmazonS3 object that represents a connection with the
+			// remote S3 service.
+			BasicAWSCredentials awsCredentials = new BasicAWSCredentials(
+					AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY);
+			
+			s3 = AmazonS3ClientBuilder
+					.standard()
+					.withRegion(Regions.AP_SOUTHEAST_2)
+					.withCredentials(
+							new AWSStaticCredentialsProvider(awsCredentials))
+					.build();
+			
+			// Find images names stored in S3. 
+			imageNames = getImageNames(s3);
+		} catch (Exception e) {
+			handleServiceCommunicationError();
+		}
+
 		// download performer's image if exist
 		if (imageNames.contains(performer.getImageName())) {
 			downloadedImage = downloadImage(performer.getImageName());
 		} else {
 			throw new ServiceException(Messages.NO_IMAGE_FOR_PERFORMER);
 		}
-		
-		// read the image from the downloaded image file and then delete it to
-		// not take up unnecessary space
-		BufferedImage image = null;
-		try {
-		    ImageIO.write(downloadedImage, "jpg", new File(performer.getImageName()));
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
 
-		return image;
+		return downloadedImage;
 	}
 
 	@Override
@@ -489,32 +487,24 @@ public class DefaultService implements ConcertService {
 	 */
 	private List<String> getImageNames(AmazonS3 s3) {
 		ArrayList<String> imageNames = new ArrayList<>();
-		try{
-			ObjectListing ol = s3.listObjects(AWS_BUCKET);
-			List<S3ObjectSummary> objects = ol.getObjectSummaries();
-			for (S3ObjectSummary os : objects) {
-				imageNames.add(os.getKey());
-			}
-		} catch(Exception e){
-			handleServiceCommunicationError();
-		} 
+		ObjectListing ol = s3.listObjects(AWS_BUCKET);
+		List<S3ObjectSummary> objects = ol.getObjectSummaries();
+		for (S3ObjectSummary os : objects) {
+			imageNames.add(os.getKey());
+		}
 		return imageNames;
 	}
 
 	/**
 	 * Downloads a specific performer's image
 	 */
-	private BufferedImage downloadImage(String img) {
+	private BufferedImage downloadImage(String img){
 		BufferedImage image  = null;
+        S3Object o = s3.getObject(AWS_BUCKET, img);
+        S3ObjectInputStream s3is = o.getObjectContent();
         try {
-            S3Object o = s3.getObject(AWS_BUCKET, img);
-            S3ObjectInputStream s3is = o.getObjectContent();
-            try {
-    			image = ImageIO.read(s3is);
-    		} catch (Exception e) {
-    			e.printStackTrace();
-    		}
-            s3is.close();
+			image = ImageIO.read(s3is);
+	        s3is.close();
 		} catch (Exception e) {
 			handleServiceCommunicationError();
 		}
