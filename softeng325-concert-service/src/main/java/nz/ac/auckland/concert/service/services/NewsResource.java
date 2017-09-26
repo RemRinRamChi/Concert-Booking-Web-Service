@@ -171,6 +171,8 @@ public class NewsResource {
 					
 					// return the news item
 					response.resume(builder.build());
+					_responses.remove(id);
+
 				} else {
 					List<NewsItemDTO> newNewsItems = new ArrayList<>();
 					// return all the news after a certain news id (the subscriber's last received news item)
@@ -189,6 +191,7 @@ public class NewsResource {
 					
 					// return the news items
 					response.resume(builder.build());
+					_responses.remove(id);
 				}
 				
 			}

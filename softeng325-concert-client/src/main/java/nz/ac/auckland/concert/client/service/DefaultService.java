@@ -46,7 +46,10 @@ import nz.ac.auckland.concert.common.dto.UserDTO;
 import nz.ac.auckland.concert.common.message.Messages;
 import nz.ac.auckland.concert.common.util.Config;
 
-// TODO javadoc and the special message exception
+/**
+ * REST Web service client that implements ConcertService. 
+ *
+ */
 public class DefaultService implements ConcertService {
 
 	private static Logger _logger = LoggerFactory

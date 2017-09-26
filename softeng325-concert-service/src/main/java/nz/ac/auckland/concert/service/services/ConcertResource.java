@@ -240,7 +240,7 @@ public class ConcertResource {
 		// Use the EntityManager to retrieve all Bookings with the same username.
 		TypedQuery<Booking> bookingQuery = 
 				em.createQuery("select b from Booking b "
-						+ "left join fetch b._seats " //TODO check if i did this properly
+						+ "left join fetch b._seats "
 						+ "where b._user._username = :username", Booking.class)
 				.setParameter("username", user.getUsername());
 		List<Booking> bookings = bookingQuery.getResultList();
