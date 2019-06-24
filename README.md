@@ -1,4 +1,4 @@
-# SA Web Service
+# Concert Booking Web Service
 
 Scalable JAX-RS REST web service for a small venue with 374 seats. 
 - Seats are classified into 3 price bands (A,B,c).
