@@ -56,11 +56,11 @@ public class DefaultService implements ConcertService {
 			.getLogger(DefaultService.class);
 	
 	// AWS S3 access credentials for concert images.
-	private static final String AWS_ACCESS_KEY_ID = "AKIAIDYKYWWUZ65WGNJA";
-	private static final String AWS_SECRET_ACCESS_KEY = "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";
+	private static final String AWS_ACCESS_KEY_ID = "// TODO add access key";
+	private static final String AWS_SECRET_ACCESS_KEY = "// TODO add secret access key";
 
 	// Name of the S3 bucket that stores images.
-	private static final String AWS_BUCKET = "concert.aucklanduni.ac.nz";
+	private static final String AWS_BUCKET = "// TODO add aws bucket";
 
 	private String WEB_SERVICE_URI = "http://localhost:10000/services/concerts";
 
