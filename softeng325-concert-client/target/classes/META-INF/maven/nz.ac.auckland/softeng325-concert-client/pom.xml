@@ -9,7 +9,7 @@
 	<artifactId>softeng325-concert-client</artifactId>
 
 	<properties>
-		<jetty.version>9.4.6.v20170531</jetty.version>
+		<jetty.version>9.4.34.v20201102</jetty.version>
 	</properties>
 
 	<dependencies>
